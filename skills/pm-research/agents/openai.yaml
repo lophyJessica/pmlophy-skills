@@ -1,0 +1,4 @@
+interface:
+  display_name: "PM Research"
+  short_description: "基于一手资料做事实调研"
+  default_prompt: "使用 $pm-research，查官方文档、源码或真实系统，分开事实、不确定性和建议。"

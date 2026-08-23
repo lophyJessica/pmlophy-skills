@@ -1,0 +1,6 @@
+interface:
+  display_name: "PM to Spec"
+  short_description: "把已拍板决定整理成 Agent 规格"
+  default_prompt: "使用 $pm-to-spec，把已经确认的产品讨论整理成包含范围、保留层、红线和验收标准的执行规格。"
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,6 @@
+interface:
+  display_name: "PM Handoff"
+  short_description: "压缩任务并交接给下一会话或 Agent"
+  default_prompt: "使用 $pm-handoff 生成一份不重复历史、带证据和下一步责任人的任务交接。"
+policy:
+  allow_implicit_invocation: false
