@@ -1,0 +1,6 @@
+interface:
+  display_name: "PM Discovery Dialogue"
+  short_description: "访谈与信息缺口问卷"
+  default_prompt: "使用 $pm-discovery-dialogue，把业务功能需求还原为真实问题，或把信息缺口整理成可发送的问卷。"
+policy:
+  allow_implicit_invocation: true
