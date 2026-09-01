@@ -48,6 +48,20 @@
 
 面向已有 React、Vue 或静态 HTML 原型的业务原型标注 Skill，包含标注方法论、runtime、编译工具和测试脚本。
 
+## AI Coding Skills（`skills/ai-coding/`）
+
+5 个 AI Coding Skill，用于给 Codex / 反重力 / Cursor 等编码 agent 更稳的工作流。来自上游开源仓库（grill-me / react-best-practices / taste-review / simplify / test-desktop-app），test-desktop-app 按用户笔记自建为通用版。
+
+| Skill | 时机 | 一句话 |
+|---|---|---|
+| `/grill-me` | 开工前 | 需求模糊？先问清楚再动手 |
+| `/react-best-practices` | 组件写完后 | 组件别扭？按 Vercel 最佳实践体检 |
+| `/taste-review` | UI 完成后 | 不好看？补一层审美审查 |
+| `/simplify` | 提交前 | 代码太绕？删冗余、去过度设计 |
+| `/test-desktop-app` | 打包后 | 没真跑过？端到端验证跑通才算数 |
+
+工作流闭环：想清楚 → 做好设计 → 写对代码 → 删除冗余 → 实际验证。
+
 ## 使用边界
 
 这些 Skill 是可复用的方法、工具和模板，不是完整业务应用。使用者需要自行提供项目代码、业务资料、PRD、数据和构建环境。
