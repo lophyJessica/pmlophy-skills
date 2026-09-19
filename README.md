@@ -46,7 +46,15 @@
 
 ### `prototype-annotation`
 
-面向已有 React、Vue 或静态 HTML 原型的业务原型标注 Skill，包含标注方法论、runtime、编译工具和测试脚本。
+面向已有 React、Vue 或静态 HTML 原型的业务原型标注 Skill（**v2.1**），包含标注方法论、runtime、编译工具与校验脚本。亮点：三级标注体系（区域级 / 页面级 / 本页规则 page-global）、字段说明**优先从字段清单详细稿 TSV 生成 13 列 Excel 表**（无 TSV 模块退化 4 列并标"待补字段清单 TSV"）、每次交付过四层校验（`check_annotation_assets.py`）、标注清单 / 交互流 / 6 Tab 详情 / 点击拖拽共存等规范。
+
+### `prd-backfill`
+
+前端/代码改动落地后把改动**回写 PRD 与关联文档**（字段清单、业务规则、Demo 页、流程图、验收清单、权限设计）的 Skill。含 改动类型 × 文档映射表、流程图回写要点（业务流程 vs 系统流程）、检查清单与红线（忠实已实现、单一事实源、最小改动、联动一致）。forge 项目常用 `prd-docs/modules/<模块>/` 套件文档。
+
+### `prd-requirement-review`
+
+对已有 PRD/方案做**两档需求评审**（简档·3-5 分钟快速 / 全档·标准评审报告），输出 S0-S3 分级、阻塞/风险/待确认事项、以及"能否进研发"结论。含 7 视角→维度速查、Given/When/Then 可验收性、简档模板+示例、报告头骨架与交付前自检清单。
 
 ## AI Coding Skills（`skills/ai-coding/`）
 
