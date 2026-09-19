@@ -1,6 +1,7 @@
 ---
-name: old-system-ui-clone
+name: old-system-ui-clone-office
 description: >
+  【办公适配版·本用户】老系统复刻，采集车头=Cursor 内置浏览器（可登录/持久登录态/任意工作 URL），适配办公机/CMS 复刻场景。
   老系统、竞品后台、ERP/WMS/CRM/OA/MES 等企业后台页面克隆与精细还原。
   Use when the agent must capture source UI evidence from legacy/internal/admin systems
   using Chrome/CDP/DOM probes, screenshots, computed styles, design tokens, Page Maps,
@@ -29,6 +30,10 @@ description: >
 页面名、`state-id`、mock 数据、文案必须从源系统派生。源站未出现的行业词、字段、侧栏、弹窗结构不得补造。
 
 对用户用中文自然语言说明进度；磁盘上的路径、脚本名、`state-id` 保持英文约定。
+
+### 采集车头：Cursor 内置浏览器（办公版默认，2026-09-19 适配）
+
+本用户环境下，业务系统的生成/测试/以及工作场景里**所有 URL 都能用 Cursor 内置浏览器**打开、登录、并持久登录态——它是对接源系统证据的首选入口（截图 + DOM 结构 + 登录态页面，证据可信可回溯）。采集走它：锁定源 URL/页面 → 截图 + 抓结构存 Page Map/probes → 再实现。`scripts/` 里的 CDP/Playwright 自动化脚本仅在能驱动到浏览器时用；登录态页面优先走 Cursor 内置浏览器人工采集，不用 Playwright 猜登录。
 
 ## Task Boundary and Clone Brief
 
