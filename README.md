@@ -60,6 +60,10 @@
 
 中文长文**去 AI 味**自检（基于 283 万字语料实测的 11 条白名单规则，每条带触发标记）。白名单式改写：只改命中规则的句子，未命中逐字保留；信息守恒（数字/日期/引语/来源不增删）、框架不动、不强加人称口语。含"别改清单"（句长/虚词/比喻/被动等实测站不住的特征）与交付验收。
 
+### `old-system-ui-clone`
+
+**老系统 UI 复刻**（ERP/WMS/CRM/OA/CMS 竞品后台、企业系统页面还原）。证据优先：先采源证据（截图/CDP/DOM 探针/Page Map/设计 token）再实现，结构断言只信证据、不靠 vision 猜；含四道硬门禁（证据先于代码/结构先于样式/视觉门禁=源vs克隆截图对比/降级标注）、工作流状态分级、QA 对比、design-system 沉淀。已适配本用户：采集车头 = Cursor 内置浏览器（可登录、持久登录态、任意工作 URL）。来自维他命 agent-skills，方法完整保留、适配采集入口。
+
 ## AI Coding Skills（`skills/ai-coding/`）
 
 5 个 AI Coding Skill，用于给 Codex / 反重力 / Cursor 等编码 agent 更稳的工作流。来自上游开源仓库（grill-me / react-best-practices / taste-review / simplify / test-desktop-app），test-desktop-app 按用户笔记自建为通用版。
