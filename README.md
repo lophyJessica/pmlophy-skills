@@ -68,6 +68,10 @@
 
 **五段式结构化提示词模板**（用户偏好的 Context/Request/Output format/红线禁止/Checkpoint 版），配合给各 agent 的指令生成。
 
+### `product-manager-workflows`
+
+通用 **PM 交付物技能**（给 Codex 写 PRD / 用户故事 / 验收标准 / MVP / 竞品分析 / 路线图 / 交接规格），带 prd / story-acceptance / research-analysis 三个模板。覆盖面宽而通用，与你自建 pm-\* 方法论有重叠；收编自 Codex 本地，作单一真源里的通用备选。
+
 ### `prototype-annotation-review`
 
 **原型标注检阅**（评审那一侧）——与 authoring 版 `prototype-annotation` 配套：标注的检阅规范、本页规则 page-global、四层校验走查、tab 持久化/滚动不重建等九规范。负责"审"已有标注对不对、缺不缺。
