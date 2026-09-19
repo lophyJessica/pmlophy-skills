@@ -60,6 +60,18 @@
 
 中文长文**去 AI 味**自检（基于 283 万字语料实测的 11 条白名单规则，每条带触发标记）。白名单式改写：只改命中规则的句子，未命中逐字保留；信息守恒（数字/日期/引语/来源不增删）、框架不动、不强加人称口语。含"别改清单"（句长/虚词/比喻/被动等实测站不住的特征）与交付验收。
 
+### `a2a-instruction-format`
+
+**给 Codex/反重力/Cursor 等编码 agent 写五段式指令的规范**（Context/Request/Output format/红线禁止/Checkpoint）。含 **Skill 路由：先扫后用**（写指令前先扫 skill 库命中就引用、防 skill 变摆设）、agent 分工（文本产物 vs 前端用 IDE）、执行环境路径（Mac 源码/VPS 部署）、硬门禁（单代码块、不打断运行中 agent、全仓保留层等）。深入案例 references 留 Hermes 内部。
+
+### `structured-ai-prompt-template`
+
+**五段式结构化提示词模板**（用户偏好的 Context/Request/Output format/红线禁止/Checkpoint 版），配合给各 agent 的指令生成。
+
+### `prototype-annotation-review`
+
+**原型标注检阅**（评审那一侧）——与 authoring 版 `prototype-annotation` 配套：标注的检阅规范、本页规则 page-global、四层校验走查、tab 持久化/滚动不重建等九规范。负责"审"已有标注对不对、缺不缺。
+
 ### `old-system-ui-clone`（原版 · 维他命）
 
 **老系统 UI 复刻**——上游忠实版（来自维他命 agent-skills），方法完整保留供回溯/与上游 diff。证据优先：先采源证据（截图/CDP/DOM 探针/Page Map/设计 token）再实现，结构断言只信证据、不靠 vision 猜；含四道硬门禁（证据先于代码/结构先于样式/视觉门禁=源vs克隆截图对比/降级标注）、工作流状态分级、QA 对比、design-system 沉淀。**日常用请走办公适配版 `old-system-ui-clone-office`**，本版留作上游参照。
