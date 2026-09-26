@@ -84,6 +84,10 @@
 
 在原版老系统复刻方法上，**采集车头固定为 Cursor 内置浏览器**——本用户办公机/工作场景里所有 URL 都能用它打开、登录、持久登录态，是源系统证据首选入口（截图 + DOM 结构 + 登录态页面，证据可信可回溯）。适用于办公机复刻 CMS/生成环境/测试环境。四道硬门禁、QA 对比、design-system 沉淀等与原版一致；CDP/Playwright 脚本仅在能驱动浏览器时用，登录态页不走 Playwright 猜登录。
 
+### `prd-doc-authoring`
+
+把主PRD + Demo + 原型标注合一成评审用完整档：评审人读它即可审、开发按它即可做。含整页红框图截图脚本（`scripts/capture_orm.py`）、标注→页面说明提取脚本（`scripts/extract_body.py`）、base64 内嵌发布脚本（`scripts/embed_images.py`），已封装"双视图切换、弹窗触发、业务状态锁定"等截图坑位，本地 agent 只需填参数启动不必现写逻辑。验证场：forge-crm 线索管理、商机管理。
+
 ## AI Coding Skills（`skills/ai-coding/`）
 
 5 个 AI Coding Skill，用于给 Codex / 反重力 / Cursor 等编码 agent 更稳的工作流。来自上游开源仓库（grill-me / react-best-practices / taste-review / simplify / test-desktop-app），test-desktop-app 按用户笔记自建为通用版。
