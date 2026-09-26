@@ -88,6 +88,10 @@
 
 把主PRD + Demo + 原型标注合一成评审用完整档：评审人读它即可审、开发按它即可做。含整页红框图截图脚本（`scripts/capture_orm.py`）、标注→页面说明提取脚本（`scripts/extract_body.py`）、base64 内嵌发布脚本（`scripts/embed_images.py`），已封装"双视图切换、弹窗触发、业务状态锁定"等截图坑位，本地 agent 只需填参数启动不必现写逻辑。验证场：forge-crm 线索管理、商机管理。
 
+### `prd-review-backfill`
+
+评审PRD变更回写权威源。靠 `scripts/diff_backfill.py` 对比评审PRD vs 权威源（字段清单/主PRD）输出三层待回写清单（确定差异/需人工确认/一致），以评审PRD为主回写覆盖，回写后重跑 diff 校验。内置字段别名归一、来源降噪、必填归一，避免把"表述不同"误判成本质差异。与 prd-backfill（代码→PRD）方向相反。
+
 ## AI Coding Skills（`skills/ai-coding/`）
 
 5 个 AI Coding Skill，用于给 Codex / 反重力 / Cursor 等编码 agent 更稳的工作流。来自上游开源仓库（grill-me / react-best-practices / taste-review / simplify / test-desktop-app），test-desktop-app 按用户笔记自建为通用版。
