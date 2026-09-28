@@ -1,7 +1,7 @@
 ---
 name: structured-ai-prompt-template
 description: "刘龙飞偏好的五段式结构化提示词模板 (Context / Request / Output format / 红线禁止 / Checkpoint)。当帮他起草或打磨给 AI 的提示词时套用。两依赖-五部曲-三原则 + 文不如表，表不如图，图不如面。"
-version: 1.0.0
+version: 1.1.0
 author: Jessica (AI Agent)
 metadata:
   tags: [prompt, template, pm, ai-workflow, lophy]
@@ -11,20 +11,21 @@ metadata:
 
 用户（刘龙飞）总结的通用提示词模板。核心价值：一次把"背景—动作—输出格式—红线—汇报时机"全部框死。
 
-**底线原则**：任何操作如可能影响 AI 记忆/进程/状态，必须先向用户预警+等确认，绝不自行执行。
+**底线原则**：任何操作如可能影响 AI 记忆/进程/状态（清缓存、重置、改配置、kill 进程等），必须先向用户预警+等确认，绝不自行执行。此条优先于所有其他规则。
 
-## 四层约束体系
+## 约束体系
 
-五段曲的红线禁止是第四层，前三层是项目级文件，反重力/Cursor/Codex 读取后天然遵守：
+给 AI 生成代码前，这几层锁死质量，五段曲之前先确保就位。前三层是项目级文件，反重力/Cursor/Codex 读取后天然遵守；指令层是五段曲的红线禁止；底线层是行为铁律：
 
 | 层级 | 文件 | 管什么 |
 |:--|:--|:--|
 | 🏗 业务 | `context/` | 做什么/不做什么/规则/术语 |
-| 📋 文档 | `AGENTS.md` | PRD怎么写/已知坑/六维走查 |
-| 🎨 视觉 | `DESIGN.md` | 颜色/字体/圆角/间距/组件token |
+| 📋 文档 | `AGENTS.md` | PRD怎么写/已知坑/六维走查标准 |
+| 🎨 视觉 | `DESIGN.md` | 颜色/字体/圆角/间距/组件token/状态标签配色 |
 | 🚦 指令 | 五段曲 红线禁止 | 本次任务边界/不改什么 |
+| 🛡 底线 | 行为铁律 | 任何可能影响记忆/进程的操作必须先预警 |
 
-DESIGN.md 用 Google 开源的 design.md 格式——YAML front matter 定义 token + Markdown 正文写设计 rationale。Agent 读到的不只是 `#2563eb`，还有"这是唯一主操作色，不用于装饰"。避免跨会话配色漂移。
+DESIGN.md 用 Google Labs Code 开源的 `design.md` 格式——YAML front matter 定义 token + Markdown 正文写设计 rationale，Agent 可读可 lint。Agent 读到的不只是 `#2563eb`，还有"这是唯一主操作色，不用于装饰"，避免跨会话配色漂移。放项目根目录，AGENTS.md 中写明"做 UI 前必读 DESIGN.md"。
 
 ## 指令路径规范
 
@@ -140,11 +141,15 @@ DESIGN.md 用 Google 开源的 design.md 格式——YAML front matter 定义 to
 ```
 Context:
 我正在做 [大任务]。
-目标对象是 [谁]。
-这个结果要帮助他们 [达成什么结果]。
+目标对象是 [谁]，这个结果要帮助他们 [达成什么结果]。
+当前状态/已拍板/已查实：[必要的背景信息]
+涉及文件（如有）：[目标文件路径]；参考 [范本/SSOT 路径，只读]
 
 Request:
-请完成 [一个明确动作]。
+请完成以下动作：
+1. [具体动作1]
+2. [具体动作2]
+3. ……
 
 Output format:
 请按照 [具体结构] 输出。
@@ -163,8 +168,8 @@ Checkpoint:
 
 ## 五段各管什么
 
-- **Context（背景）**：交代大任务 + 目标对象 + 期望结果。让 AI 知道"为谁、为什么"，产出才不跑偏。
-- **Request（动作）**：一句话一个明确动作。别塞多个动作，多任务拆多次。
+- **Context（上下文）**：交代本次任务需要知道的上下文，不限于文件——任务背景与目标、当前状态、已拍板的口径、已查实的事实/线索，以及涉及的目标文件和参考文件（给路径）。让 AI 知道"为谁、为什么、现在什么情况、照着什么做"，产出才不跑偏。
+- **Request（动作）**：可以分步列多个动作（1/2/3…），每一步都要写具体；所有步骤服务于本条指令的同一个目标。
 - **Output format（输出格式）**：结构 + 必含模块 + 长度上限。**不可省略**——这是 Hermes 验收的抓手。要求 executor 交出「逐文件 改前/改后 对照 + 一张自洽表」（如 单号→场景→状态→关联号 的全链对照，或 台账验算表），Hermes 才有东西核。实操中这是我最常漏的段，每次缺了用户验收就少锚点。
 - **红线禁止**：不限数量，按类别列禁止项 + 举例。常见三类：不改已有的 / 不加不该有的 / 不越界发挥。这条治 AI 幻觉最有效。
 - **Checkpoint（汇报时机）**：给 AI 自主权——除非不可逆/范围变化/缺信息，否则做完再汇报，别频繁打断。
@@ -173,12 +178,10 @@ Checkpoint:
 
 - 五段不必每次全填，但 **Context + Request + 红线禁止 三段建议每次都有**——这是防猜、防越界的最小组合。
 - Checkpoint 段是"自主执行授权"，正好匹配用户偏好：让 AI 一口气把活干完再汇报，而不是每步都停下来问。
-- 配合课程"分层喂料"原则：Context 段只放这次任务需要的背景，别把整个项目上下文全倒进去。
+- 配合课程"分层喂料"原则：Context 段只放这次任务需要的上下文，文件给路径让 AI 自己读，别把整个项目或大压缩包全倒进去。
 - 第一次安装 Hermes CLI 时，应先查官网文档确认最新安装命令。不要凭记忆给 `brew install hermes`——最新 CLI 安装方式可能已变（实际正确方式是 `curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash`）。
 
-## 行为铁律
-
-> 任何操作如可能影响 Hermes 的记忆/进程/状态（清缓存、重置、改配置、kill 进程等），必须先向用户预警並等他确认，绝不自行执行。此条优先於所有其他规则。
+## 参考文件
 
 - `references/design-md-template.md` — DESIGN.md 模板
 - `references/project-deliverables.md` — 项目打包规范（整包不打散、zip 不 tar.gz、发前验证）
@@ -205,6 +208,8 @@ PRD/mock **走查返修的完整 A2A 闭环**（grounding → 定位 code/doc/mo
 
 **文不如表，表不如图，图不如面** — 面=可运行的在线系统。
 
+永远从最高层开始——先给链接（完整可交互系统），被追问再翻底层文档。
+
 ## 项目包分发
 
 见 `references/project-packaging.md`。
@@ -213,14 +218,6 @@ PRD/mock **走查返修的完整 A2A 闭环**（grounding → 定位 code/doc/mo
 
 **Agent-to-Agent**：用户 ⇢ Hermes(我) ⇢ 反重力/Cursor/Codex。用户只做决策，我出五段曲指令，反重力执行。当前人工传话阶段，目标是用户一句话我直接调反重力结束。
 
-面试金句："我不是在用 AI 工具，是在指挥 AI 军团协作——每个 Agent 有自己的特长，我用方法论统一调度。"
-
-## 展示力金字塔
-
-面试/评审时按此层级递进：**文不如表，表不如图，图不如面。** 永远从最高层开始——先甩链接（完整可交互系统），被追问再翻底层文档。
-
-``` ...```
- 
 ## 实战验证：Antigravity 前端生成模式
 
 以下模式在强盛科技进销存项目中经过 6 轮验证，轮轮 `npm run build` 零错误。
@@ -266,21 +263,7 @@ Request:
 - 单次最高生成 14 个页面
 - 关键：红线禁止精确到按钮级别——"不渲染disabled按钮""不加勾选列""工具条无新增"
 
-## 六层约束体系
-
-给 AI 生成代码前，六个文件锁死质量。五段曲之前先确保就位：
-
-| 层级 | 文件 | 管什么 |
-|:--|:--|:--|
-| 🏗 业务 | `context/` | 做什么/不做什么/规则/术语 |
-| 📋 文档 | `AGENTS.md` | PRD怎么写/已知坑/走查标准 |
-| 🎨 视觉 | `DESIGN.md` | 颜色/字体/圆角/间距/状态标签配色 |
-| 🚦 执行 | 五段曲红线禁止 | 本次任务边界/不改什么 |
-| 🛡 底线 | 行为铁律 | 任何可能影响记忆/进程的操作必须先预警 |
-
-DESIGN.md 格式见 Google Labs Code 的 `design.md` 仓库——YAML front matter(token) + Markdown body(rationale)，Agent 可读可 lint。放项目根目录，AGENTS.md 中写明"做 UI 前必读 DESIGN.md"。
-
-展示力金字塔：**文不如表，表不如页，页不如面**。面试优先展示可操作的界面和系统，文档作为底层支撑。
+## 五段曲与三原则
 
 五段曲 = Context → Request → Output format → 红线禁止 → Checkpoint
 
@@ -296,7 +279,6 @@ PRD 文档（.md）和前端源码（.tsx）不能混在一条指令里——Man
 
 **3. Output format 和 Checkpoint 不能因为"任务简单"就省略。**
 五段式的最小组合是 Context + Request + 红线禁止，但 Output format 和 Checkpoint 不可省略——Output format 是验证抓手(让 executor 交出逐文件差异)，Checkpoint 是自主执行授权(做完再汇报)。缺任何一段都会让用户验收少锚点或 Agent 频繁打断。
-```
 
 ### 三原则详解
 
@@ -355,21 +337,3 @@ PRD 文档（.md）和前端源码（.tsx）不能混在一条指令里——Man
 - `references/four-layer-constraints.md` — 四层约束体系（ACD：AGENTS+Context+DESIGN）
 - `references/chat-api-deployment.md` — Hermes API 部署：Python 桥接 + nginx 反向代理 + 聊天 HTML 页面。
 - `references/a2a-git-verify-loop.md` — A2A 执行→验证闭环：Codex/反重力 执行+push、VPS「先检查再 pull」复验、八进制中文路径坑、VPS 只拉不推回滚、并行规则、反重力加固、打样/报告先行。
-
-## 展示金字塔
-
-**文不如表，表不如图，图不如面** — 面=可运行的在线系统。
-
-## 项目包分发
-
-见 `references/project-packaging.md`。
-
-## A2A 协作模式
-
-**Agent-to-Agent**：用户 ⇢ Hermes(我) ⇢ 反重力/Cursor/Codex。用户只做决策，我出五段曲指令，反重力执行。当前人工传话阶段，目标是用户一句话我直接调反重力结束。
-
-面试金句："我不是在用 AI 工具，是在指挥 AI 军团协作——每个 Agent 有自己的特长，我用方法论统一调度。"
-
-## 展示力金字塔
-
-面试/评审时按此层级递进：**文不如表，表不如图，图不如面。** 永远从最高层开始——先甩链接（完整可交互系统），被追问再翻底层文档。
