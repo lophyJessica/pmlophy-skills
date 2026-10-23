@@ -5,6 +5,9 @@ rem Windows skill sync script
 rem Run from the pmlophy-skills repository root after pulling it.
 
 set "REPO=%~dp0skills"
+set "PROJECT_ROOT=%~1"
+if "%PROJECT_ROOT%"=="" set "PROJECT_ROOT=%CD%"
+set "PROJECT_SKILLS=%PROJECT_ROOT%\.agents\skills"
 set "USER_SKILLS=%USERPROFILE%\.agents\skills"
 set "CURSOR_SKILLS=%USERPROFILE%\.cursor\skills"
 set "CODEX_SKILLS=%USERPROFILE%\.codex\skills"
@@ -16,7 +19,7 @@ if not exist "%REPO%" (
   exit /b 1
 )
 
-for %%D in ("%USER_SKILLS%" "%CURSOR_SKILLS%" "%CODEX_SKILLS%" "%GEMINI_SKILLS%" "%WORKBUDDY_SKILLS%") do (
+for %%D in ("%PROJECT_SKILLS%" "%USER_SKILLS%" "%CURSOR_SKILLS%" "%CODEX_SKILLS%" "%GEMINI_SKILLS%" "%WORKBUDDY_SKILLS%") do (
   if not exist "%%~D" mkdir "%%~D"
   echo Syncing to %%~D
   robocopy "%REPO%" "%%~D" /E /XD .git /NFL /NDL /NJH /NJS /NP
@@ -29,6 +32,8 @@ for %%D in ("%USER_SKILLS%" "%CURSOR_SKILLS%" "%CODEX_SKILLS%" "%GEMINI_SKILLS%"
 echo.
 echo [OK] Skills synced from:
 echo      %REPO%
+echo [OK] Project skills:
+echo      %PROJECT_SKILLS%
 echo [OK] Cursor skills:
 echo      %CURSOR_SKILLS%
 endlocal
