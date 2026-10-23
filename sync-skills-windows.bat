@@ -4,7 +4,8 @@ setlocal EnableExtensions
 rem Windows skill sync script
 rem Run from the pmlophy-skills repository root after pulling it.
 
-set "REPO=%~dp0skills"
+set "REPO=%~dp0.agents\skills"
+if not exist "%REPO%" set "REPO=%~dp0skills"
 set "PROJECT_ROOT=%~1"
 if "%PROJECT_ROOT%"=="" set "PROJECT_ROOT=%CD%"
 set "PROJECT_SKILLS=%PROJECT_ROOT%\.agents\skills"
