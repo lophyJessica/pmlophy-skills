@@ -53,7 +53,7 @@ description: 编写评审PRD交付档：主PRD+Demo+原型标注合一成自包�
 
 ## 交付 = base64 内嵌发布版（唯一形态）
 - 交付一律**在线预览**（导入语雀/Confluence），不打包zip、不发原文md。
-- 用 `04-常用模版/embed_images.py`（或本 skill 脚本 `scripts/embed_images.py`）把 md 里 `![](./images/x.png)` 替换成 `data:image/png;base64,...` 生成自包含发布版(`{名}-发布版.md`)，导入任何平台路径不断、图可放大。
+- 用项目里的 `09-脚本工具/embed_images.py`（或本 skill 脚本 `scripts/embed_images.py`）把 md 里 `![](./images/x.png)` 替换成 `data:image/png;base64,...` 生成自包含发布版(`{名}-发布版.md`)，导入任何平台路径不断、图可放大。
 - 仓库维护用引用版(md + images/)，发布版只在交付时生成。发布版里有 base64 码是正常的，别直接读md，用渲染器看。
 - 语雀/Confluence 导入后图片可点击放大（Cursor/GitHub 预览不支持放大）。
 
@@ -85,7 +85,7 @@ description: 编写评审PRD交付档：主PRD+Demo+原型标注合一成自包�
 ## 迭代纪律
 - 用户用 forge-crm 线索管理做验证场（示例即可，不要求其他模块补全）。
 - 每版改完 push main，用户 pull 后在 GitHub/语雀看渲染验收。
-- 模板在 `04-常用模版/评审PRD模板.md`；内嵌脚本在 `04-常用模版/embed_images.py` 及本skill `scripts/embed_images.py`。
+- 模板在 `04-常用模版/评审PRD模板.md`；**项目内脚本统一放在 `09-脚本工具/`**（`embed_images.py` / `capture_orm.py` / `extract_body.py` / `status_enum_mining.py`），同一套脚本在本 skill `scripts/` 也有一份。用户明确要求脚本集中，**不准再把 .py 散落到模板目录或其他功能目录**。
 - 改表(re批次/加列/删行)别手改——用脚本：按页表头重置序号计数、整表替换，改完核验三表序号各自连续、无残留旧表头。
 - **改序号务必要确认做过一次后所有表各自从1重排**：一次全局替换 R01-R## 会按出现顺序编成全局连续号(5.2变成6,7,8…)，不是想要的"每表从1"；重排脚本的"表格内"标志必须随 `### N.m` 小节头重置，否则会越过表类型继续累加，把后面功能清单表/字段表的序号一起污染成错值。改完逐表打印序号核验(5.1:1-5、5.2:1-4…、6.1:1-9…)，别只看单页。
 - 清理外部引用/编号改号时，全文黑名单检查再 push：TSV、详细稿、权威源、角标、标注块、编号、R0、`#`列表头，一处都不留。
