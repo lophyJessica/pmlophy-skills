@@ -1,47 +1,71 @@
 @echo off
-setlocal EnableExtensions
+chcp 65001 >nul
+setlocal enabledelayedexpansion
 
-rem Windows skill junction setup
-rem Source of truth: pmlophy-skills\.agents\skills
+REM pmlophy-skills Windows 软链安装脚本
+REM 真源：脚本所在仓库的 .agents\skills
+REM 作用：逐个 skill 建立 Junction 到用户级 Agent 目录
 
-set "REPO=%~dp0.agents\skills"
-if not exist "%REPO%" set "REPO=%~dp0skills"
-set "USER_SKILLS=%USERPROFILE%\.agents\skills"
-set "CURSOR_SKILLS=%USERPROFILE%\.cursor\skills"
-set "CODEX_SKILLS=%USERPROFILE%\.codex\skills"
-set "GEMINI_SKILLS=%USERPROFILE%\.gemini\config\skills"
-set "WORKBUDDY_SKILLS=%USERPROFILE%\.workbuddy\skills"
+set "SRC=%~dp0.agents\skills"
+if not exist "%SRC%" set "SRC=%~dp0skills"
+set "HUB=%USERPROFILE%\.agents\skills"
 
-if not exist "%REPO%" (
-  echo [ERROR] Cannot find skill source: %REPO%
-  exit /b 1
+if not exist "%SRC%" (
+    echo [FAIL] 找不到 skill 真源: %SRC%
+    pause
+    exit /b 1
 )
-
-call :ensure_junction "%USER_SKILLS%" "%REPO%"
-call :ensure_junction "%CURSOR_SKILLS%" "%USER_SKILLS%"
-call :ensure_junction "%CODEX_SKILLS%" "%USER_SKILLS%"
-call :ensure_junction "%GEMINI_SKILLS%" "%USER_SKILLS%"
-call :ensure_junction "%WORKBUDDY_SKILLS%" "%USER_SKILLS%"
+if not exist "%HUB%" mkdir "%HUB%"
 
 echo.
-echo [OK] Skill source: %REPO%
-echo [OK] User skill junction: %USER_SKILLS%
-echo [OK] Cursor skill junction: %CURSOR_SKILLS%
+echo === pmlophy-skills Windows 软链安装 ===
+echo 真源: %SRC%
+echo 中枢: %HUB%
+echo.
+
+REM 逐个 skill 建立中枢 Junction
+for /d %%D in ("%SRC%\*") do (
+    set "NAME=%%~nD"
+    set "TARGET=%HUB%\!NAME!"
+    if exist "!TARGET!" (
+        set "BACKUP=!TARGET!.backup-%RANDOM%"
+        move "!TARGET!" "!BACKUP!" >nul 2>nul
+        echo [BACKUP] !TARGET! ^> !BACKUP!
+    )
+    mklink /J "!TARGET!" "%%D" 2>nul
+    if exist "!TARGET!" (echo [OK] 中枢 !NAME!) else (echo [FAIL] 中枢 !NAME!)
+)
+
+call :mirror "Cursor" "%USERPROFILE%\.cursor\skills"
+call :mirror "Codex" "%USERPROFILE%\.codex\skills"
+call :mirror "Antigravity" "%USERPROFILE%\.antigravity\skills"
+
+:done
+echo.
+echo === 全部完成 ===
+echo 真源: %SRC%
+echo 中枢: %HUB%
+echo 不涉及 cms-project，不会在项目目录写入 skill。
+pause
 exit /b 0
 
-:ensure_junction
-set "LINK=%~1"
-set "TARGET=%~2"
-if exist "%LINK%" (
-  echo [KEEP] Existing path: %LINK%
-  echo        If it is not a junction to the target, fix it manually after checking.
-  exit /b 0
+:mirror
+set "LABEL=%~1"
+set "DEST=%~2"
+if not exist "%DEST%" (
+    echo [SKIP] %LABEL% 目录不存在: %DEST%
+    exit /b 0
 )
-for %%P in ("%LINK%") do if not exist "%%~dpP" mkdir "%%~dpP"
-mklink /J "%LINK%" "%TARGET%"
-if errorlevel 1 (
-  echo [ERROR] Failed to create junction: %LINK%
-  exit /b 1
+echo 镜像到 %LABEL%...
+for /d %%D in ("%SRC%\*") do (
+    set "NAME=%%~nD"
+    set "TARGET=%DEST%\!NAME!"
+    if exist "!TARGET!" (
+        set "BACKUP=!TARGET!.backup-%RANDOM%"
+        move "!TARGET!" "!BACKUP!" >nul 2>nul
+        echo [BACKUP] !TARGET! ^> !BACKUP!
+    )
+    mklink /J "!TARGET!" "%%D" 2>nul
+    if exist "!TARGET!" (echo [OK] !LABEL! !NAME!) else (echo [FAIL] !LABEL! !NAME!)
 )
-echo [LINK] %LINK% ^> %TARGET%
 exit /b 0
