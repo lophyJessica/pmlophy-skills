@@ -144,8 +144,64 @@ function annotationTypeLabel(annotation) {
   return VPA_TYPE_META[annotationType(annotation)].label;
 }
 
+function annotationScreenState(annotation) {
+  const value = String(annotation?.screenState || 'host').trim();
+  return value || 'host';
+}
+
+function annotationTargetRect(annotation) {
+  const isPageGlobal = annotation.type === 'page-global' || (!annotation.target?.selector && !annotation.target?.fallbackSelectors?.length);
+  if (isPageGlobal) {
+    const headerTarget = document.querySelector('[data-anno="page-header"]') ||
+      document.querySelector('header') ||
+      document.querySelector('main') ||
+      document.body;
+    const hRect = headerTarget ? headerTarget.getBoundingClientRect() : { top: 16, left: 16, right: 300, width: 24, height: 24 };
+    return {
+      attachable: true,
+      rect: {
+        top: Math.max(16, hRect.top),
+        right: Math.max(64, hRect.left + 24),
+        left: hRect.left,
+        bottom: hRect.top + 24,
+        width: 24,
+        height: 24,
+      },
+    };
+  }
+  const target = findTarget(annotation);
+  if (!target) return { attachable: false, rect: null, target: null };
+  const rect = target.getBoundingClientRect();
+  return { attachable: isAttachableTarget(target, rect), rect, target };
+}
+
+function visibleScreenStatesOnPage() {
+  const onPage = sortedAnnotations().filter((annotation) => currentPageMatches(annotation));
+  const states = new Set(onPage.map((annotation) => annotationScreenState(annotation)));
+  const visible = [];
+  states.forEach((state) => {
+    const group = onPage.filter((annotation) => annotationScreenState(annotation) === state);
+    const anyAttachable = group.some((annotation) => annotationTargetRect(annotation).attachable);
+    if (anyAttachable) visible.push(state);
+  });
+  return visible;
+}
+
+function resolveActiveScreenState() {
+  const visible = visibleScreenStatesOnPage();
+  if (!visible.length) return 'host';
+  const overlays = visible.filter((state) => state !== 'host');
+  if (overlays.length) {
+    return overlays.sort().slice(-1)[0];
+  }
+  return 'host';
+}
+
 function currentPageAnnotations() {
-  return sortedAnnotations().filter((annotation) => currentPageMatches(annotation));
+  const activeState = resolveActiveScreenState();
+  return sortedAnnotations().filter(
+    (annotation) => currentPageMatches(annotation) && annotationScreenState(annotation) === activeState,
+  );
 }
 
 function annotationPlainText(markdown) {
@@ -177,6 +233,7 @@ function annotationDetailCount(annotation) {
   return Math.max(1, listCount);
 }
 
+// SYNC: parseAnnotationTabs / countMarkdownItems 与 scripts/annotation_tab_parse.py 保持同步。
 function parseAnnotationTabs(markdown) {
   const sections = { page: [], interaction: [], rule: [], field: [], pending: [] };
   const headingMap = new Map(VPA_DETAIL_TABS.filter((tab) => tab.key !== 'all').map((tab) => [tab.label, tab.key]));
@@ -693,15 +750,7 @@ function setPopupContent(container, annotation, blockKey = null) {
   const wasOpen = existingDetails ? existingDetails.classList.contains('is-open') : true;
   const previousTab = existingDetails?.dataset.detailTab || 'all';
   const markdown = getAnnotationMarkdown(annotation);
-  const source = annotationSourceMarkdown(markdown);
   container.innerHTML = '';
-
-  if (source) {
-    const sourceContainer = document.createElement('div');
-    sourceContainer.className = 'vpa-popup-source';
-    setMarkdownContent(sourceContainer, source);
-    container.appendChild(sourceContainer);
-  }
 
   const toggle = document.createElement('button');
   toggle.type = 'button';
@@ -883,33 +932,10 @@ function measureBadges() {
 
   const placedPositions = [];
 
-  for (const annotation of sortedAnnotations()) {
-    if (!currentPageMatches(annotation)) continue;
-    const isPageGlobal = annotation.type === 'page-global' || (!annotation.target?.selector && !annotation.target?.fallbackSelectors?.length);
-    let target = null;
-    let rect = null;
-
-    if (isPageGlobal) {
-      // 页面级块：徽章定位到页面顶部，不挂筛选区
-      const headerTarget = document.querySelector('[data-anno="page-header"]') ||
-                           document.querySelector('header') ||
-                           document.querySelector('main') ||
-                           document.body;
-      const hRect = headerTarget ? headerTarget.getBoundingClientRect() : { top: 16, left: 16, right: 300, width: 24, height: 24 };
-      rect = {
-        top: Math.max(16, hRect.top),
-        right: Math.max(64, hRect.left + 24),
-        left: hRect.left,
-        bottom: hRect.top + 24,
-        width: 24,
-        height: 24,
-      };
-    } else {
-      target = findTarget(annotation);
-      if (!target) continue;
-      rect = target.getBoundingClientRect();
-      if (!isAttachableTarget(target, rect)) continue;
-    }
+  for (const annotation of currentPageAnnotations()) {
+    const placement = annotationTargetRect(annotation);
+    if (!placement.attachable || !placement.rect) continue;
+    const rect = placement.rect;
 
     const key = annotationKey(annotation);
     visibleIds.add(key);

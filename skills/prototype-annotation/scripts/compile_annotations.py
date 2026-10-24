@@ -69,9 +69,12 @@ def compile_config(config_path: Path, allow_unmapped: bool = False, scope_overri
             errors.append(f"{config_path}: annotations[{index}] is missing id")
             continue
         page = str(annotation.get("page", "")).strip()
-        page_id = (page, annotation_id)
+        state = str(annotation.get("screenState") or "host").strip() or "host"
+        page_id = (page, state, annotation_id)
         if page_id in seen_page_ids:
-            errors.append(f"{config_path}: duplicate annotation id on page '{page}': {annotation_id}")
+            errors.append(
+                f"{config_path}: duplicate annotation id on page/state '{page}'/{state}: {annotation_id}"
+            )
             continue
         seen_page_ids.add(page_id)
 

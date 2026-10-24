@@ -28,12 +28,13 @@ class AssetCheckerTests(unittest.TestCase):
     def test_accepts_compiled_page_global_annotation_without_selector(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
+            md = """### 页面内容\n概述。\n\n### 交互说明\n1) 操作。\n\n### 业务规则\n1) 规则。\n\n### 字段说明\n本块不涉及字段\n\n### 待确认\n暂无\n"""
             write_kit(root, [{
                 "id": "1",
                 "page": "/records",
                 "type": "page-global",
                 "target": {"selector": "", "fallbackSelectors": []},
-                "markdown": "## 页面内容\n\n- 页面规则。",
+                "markdown": md,
             }])
             result = MODULE.check_assets(root)
             self.assertEqual(result["annotations"], 1)
@@ -49,7 +50,7 @@ class AssetCheckerTests(unittest.TestCase):
                 "markdown": "## 页面内容\n\n- 页面规则。",
             }
             write_kit(root, [annotation, dict(annotation)])
-            with self.assertRaisesRegex(ValueError, "Duplicate annotation id per page"):
+            with self.assertRaisesRegex(ValueError, "Duplicate annotation id on same page/state"):
                 MODULE.check_assets(root)
 
 

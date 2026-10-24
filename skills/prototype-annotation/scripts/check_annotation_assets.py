@@ -2,25 +2,43 @@
 """Check deployable prototype annotation assets.
 
 No network or third-party dependencies. Validates the compiled annotation-kit dir:
-bundle completeness, per-page unique ids, compiled-in markdown, target selectors, coverage.
-This is NOT DOM mounting or remote hosting validation.
+bundle completeness, anchors, routes, screen-state id rules, and Markdown tab shape.
 
-可选的路由/锚点静态校验（强烈建议在发版前加上）：
+可选参数：
 
-    --src    <前端源码目录>  每个 target.selector 里的 data-anno 值必须在源码中真实存在
-    --routes <路由文件>      每个 page / routeMatcher 必须能命中路由表里的至少一条路由
+    --src         前端源码目录（判据 1）
+    --routes      路由文件（判据 2）
+    --config      annotation.config.json（判据 9、10）
+    --prd-pages   本 PRD 页面清单，逗号或换行分隔（判据 10）
 
-这两项拦的是一类静默失败：标注写好了、编译通过了、页面上一颗角标都出不来。
-2026-10 私域2.0 一期就踩过——菜单路由从 /auth/tags 改到 /engage/tags 后，
-config 里的 page 没跟着改，编译校验全绿，线上 3 条标注直接消失。
+六页签解析与 runtime.js 共用 scripts/annotation_tab_parse.py（与 runtime 内函数同步）。
 """
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Optional
 
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+
+from annotation_tab_parse import (
+    TAB_KEYS,
+    count_markdown_items,
+    is_empty_tab_body,
+    parse_annotation_tabs,
+    tab_body,
+)
+
 SOURCE_SUFFIXES = {'.tsx', '.ts', '.jsx', '.js', '.vue', '.html'}
+
+FIELD_TABLE_HEADER = re.compile(
+    r"字段名称\s*\|\s*是否必填\s*\|\s*是否可编辑\s*\|\s*约束与校验"
+)
+POINTER_PHRASE = re.compile(r"见\s*§|参见")
+DISPLAY_SOURCE = re.compile(r"(?:^|\n)\s*(?:>\s*)?来源\s*[:：]", re.MULTILINE)
 
 
 def collect_source_text(src: Path) -> str:
@@ -44,11 +62,6 @@ def collect_route_paths(routes_file: Path) -> list:
 
 
 def collect_route_entries(routes_file: Path) -> tuple:
-    """Return (renderable_paths, redirect_paths).
-
-    重定向路由（element={<Navigate .../>}）在路由表里“存在”，但页面永远不会渲染在
-    那个 URL 上，把标注 page 指向它等于静默失效——必须单独识别出来。
-    """
     text = routes_file.read_text(encoding='utf-8', errors='ignore')
     chunks = re.split(r'<Route\b', text)
     renderable, redirects = set(), set()
@@ -57,7 +70,6 @@ def collect_route_entries(routes_file: Path) -> tuple:
         if not match:
             continue
         path = match.group(1)
-        # 只看这条 Route 自身（到下一个 </Route> 或 /> 为止）
         body = chunk.split('</Route>')[0]
         if 'Navigate' in body:
             redirects.add(path)
@@ -69,11 +81,6 @@ def collect_route_entries(routes_file: Path) -> tuple:
 
 
 def route_matches(route_path: str, candidate: str) -> bool:
-    """Whether a router entry can serve the given concrete URL path.
-
-    A trailing ``/*`` is a wildcard route (e.g. /tools/* serving /tools/whats/friends),
-    so it has to be matched by prefix, not by equality.
-    """
     if route_path == candidate:
         return True
     if route_path.endswith('/*'):
@@ -91,7 +98,142 @@ def selector_anchor(selector: str) -> str:
     return match.group(1) if match else ''
 
 
-def check_assets(directory: Path, src: Optional[Path] = None, routes_file: Optional[Path] = None) -> dict:
+def screen_state(annotation: dict) -> str:
+    value = str(annotation.get('screenState') or 'host').strip()
+    return value or 'host'
+
+
+def id_group_key(annotation: dict) -> str:
+    matcher = annotation.get('routeMatcher') or annotation.get('page') or ''
+    return f"{matcher}::{screen_state(annotation)}"
+
+
+def block_label(annotation: dict) -> str:
+    return f"{annotation.get('page')}#{annotation.get('id')} screenState={screen_state(annotation)}"
+
+
+def parse_prd_pages(raw: str) -> list[str]:
+    parts = re.split(r'[,，\n]+', raw or '')
+    return [p.strip() for p in parts if p.strip()]
+
+
+def numeric_ids(ids: list[str]) -> list[int]:
+    out = []
+    for item in ids:
+        if re.fullmatch(r'\d+', str(item)):
+            out.append(int(item))
+    return sorted(out)
+
+
+def check_field_tab(annotation: dict, body: str) -> Optional[str]:
+    if '本块不涉及字段' in body.replace(' ', ''):
+        return None
+    if POINTER_PHRASE.search(body):
+        return '字段说明出现「见§/参见」指路'
+    if FIELD_TABLE_HEADER.search(body):
+        return None
+    if count_markdown_items(body) > 0 and '|' not in body:
+        return '字段说明应为四列表格或「本块不涉及字段」，当前为散文'
+    if body.strip() and '|' in body and not FIELD_TABLE_HEADER.search(body):
+        return '字段说明表格表头须为：字段名称 / 是否必填 / 是否可编辑 / 约束与校验'
+    return None
+
+
+def check_annotation_markdown(annotation: dict) -> list[str]:
+    errors = []
+    label = block_label(annotation)
+    md = str(annotation.get('markdown') or '')
+    if DISPLAY_SOURCE.search(md):
+        errors.append(f'[判据7] {label} 页签「全文」: Markdown 含展示用来源行，应只写在 sourceRefs')
+    sections = parse_annotation_tabs(md)
+    empty_tabs = 0
+    for key in TAB_KEYS:
+        body = tab_body(sections, key)
+        if is_empty_tab_body(body):
+            empty_tabs += 1
+            continue
+        count = count_markdown_items(body)
+        if count == 0 and len(body.strip()) > 8:
+            tab_name = {'page': '页面内容', 'interaction': '交互说明', 'rule': '业务规则', 'field': '字段说明', 'pending': '待确认'}[key]
+            errors.append(f'[判据5] {label} 页签「{tab_name}」: 有正文但条目统计为 0（与 runtime 解析不一致）')
+        if key == 'field':
+            field_err = check_field_tab(annotation, body)
+            if field_err:
+                errors.append(f'[判据6] {label} 页签「字段说明」: {field_err}')
+    if empty_tabs >= 5:
+        errors.append(f'[判据8] {label}: 六个页签中 {empty_tabs} 个为空或仅「暂无」，属空壳块')
+    return errors
+
+
+def check_id_groups(annots: list[dict]) -> list[str]:
+    errors = []
+    groups: dict[str, list[dict]] = {}
+    for a in annots:
+        groups.setdefault(id_group_key(a), []).append(a)
+    for group_key, items in groups.items():
+        ids = [str(a.get('id')) for a in items]
+        dup = sorted({i for i in ids if ids.count(i) > 1})
+        if dup:
+            sample = block_label(items[0])
+            errors.append(
+                f'[判据3] {sample} 等同编号分组内 id 重复: {dup}（分组键 {group_key})'
+            )
+        nums = numeric_ids(ids)
+        if nums:
+            expected = list(range(1, len(nums) + 1))
+            if nums != expected or len(nums) != len(items):
+                errors.append(
+                    f'[判据4] 分组 {group_key} 内 id 须从 1 连续: 当前 {nums}'
+                )
+    return errors
+
+
+def check_source_refs(config: dict, annots: list[dict]) -> list[str]:
+    errors = []
+    requirements = {str(r.get('id')): r for r in config.get('sourceRequirements', []) if r.get('id')}
+    for a in annots:
+        label = block_label(a)
+        refs = a.get('sourceRefs') or []
+        if not refs:
+            errors.append(f'[判据9] {label}: sourceRefs 为空')
+            continue
+        for ref in refs:
+            ref_s = str(ref)
+            if ref_s not in requirements:
+                errors.append(f'[判据9] {label}: sourceRefs 引用不存在的需求点 {ref_s}')
+    mapped = set()
+    for a in annots:
+        for ref in a.get('sourceRefs') or []:
+            mapped.add(str(ref))
+    for req_id in requirements:
+        if req_id not in mapped:
+            errors.append(f'[判据9] 需求点 {req_id} 未被任何标注 sourceRefs 覆盖')
+    return errors
+
+
+def check_prd_pages(annots: list[dict], prd_pages: list[str]) -> list[str]:
+    if not prd_pages:
+        return []
+    errors = []
+    allowed = set(prd_pages)
+    for a in annots:
+        page = str(a.get('page') or '')
+        if page == '*':
+            continue
+        if page not in allowed:
+            errors.append(
+                f'[判据10] {block_label(a)}: page {page} 不在本 PRD 页面清单内'
+            )
+    return errors
+
+
+def check_assets(
+    directory: Path,
+    src: Optional[Path] = None,
+    routes_file: Optional[Path] = None,
+    config_path: Optional[Path] = None,
+    prd_pages: Optional[list[str]] = None,
+) -> dict:
     for name in ('runtime.js', 'runtime.css', 'annotation.bundle.json'):
         p = directory / name
         if not p.is_file() or not p.stat().st_size:
@@ -100,38 +242,30 @@ def check_assets(directory: Path, src: Optional[Path] = None, routes_file: Optio
     annots = bundle.get('annotations')
     if not isinstance(annots, list) or not annots:
         raise ValueError('Bundle has no annotations')
-    seen = set()
-    dups = []
-    for a in annots:
-        key = (a.get('page'), a.get('id'))
-        if key in seen:
-            dups.append(f'{a.get("page")}/{a.get("id")}')
-        seen.add(key)
-    if dups:
-        raise ValueError(f'Duplicate annotation id per page: {sorted(set(dups))[:10]}')
 
-    # 同一 routeMatcher 分组内 id 必须唯一：宿主页与弹窗共用一个 matcher 时，
-    # 两组都从 1 开始编号会让页面上出现两个“1”，评审分不清角标对应哪里。
-    by_matcher = {}
+    seen = set()
     for a in annots:
-        matcher = a.get('routeMatcher') or a.get('page') or ''
-        by_matcher.setdefault(matcher, []).append(str(a.get('id')))
-    matcher_dups = {m: sorted({i for i in ids if ids.count(i) > 1}) for m, ids in by_matcher.items()}
-    matcher_dups = {m: d for m, d in matcher_dups.items() if d}
-    if matcher_dups:
-        raise ValueError(
-            f'Duplicate annotation id within the same route group (page+modal must share one id sequence): {matcher_dups}'
-        )
+        key = (a.get('page'), screen_state(a), a.get('id'))
+        if key in seen:
+            raise ValueError(f'Duplicate annotation id on same page/state: {key}')
+        seen.add(key)
+
+    errors = check_id_groups(annots)
 
     for a in annots:
         if a.get('markdownFile'):
             raise ValueError(f'Annotation {a.get("id")} still references source markdown; compile before publishing')
         if not a.get('markdown'):
             raise ValueError(f'Annotation {a.get("id")} missing compiled markdown')
-        if not a.get('target'):
+        if not a.get('target') and a.get('type') != 'page-global':
             raise ValueError(f'Annotation {a.get("id")} missing target selector')
+        errors.extend(check_annotation_markdown(a))
+
     if not bundle.get('coverage'):
         raise ValueError('Bundle missing coverage export')
+
+    if errors:
+        raise ValueError(errors[0] if len(errors) == 1 else ';\n'.join(errors[:20]))
 
     warnings = []
     result = {
@@ -152,16 +286,12 @@ def check_assets(directory: Path, src: Optional[Path] = None, routes_file: Optio
             target = a.get('target') or {}
             selectors = [target.get('selector') or ''] + list(target.get('fallbackSelectors') or [])
             selectors = [s for s in selectors if s]
-            if not selectors:
-                continue
             anchors = [selector_anchor(s) for s in selectors]
             anchors = [x for x in anchors if x]
             if anchors and not any(anchor in source_text for anchor in anchors):
-                missing.append(f'{a.get("page")}#{a.get("id")} {"/".join(anchors)}')
+                missing.append(f'[判据1] {block_label(a)} 锚点 {"/".join(anchors)} 在源码中不存在')
         if missing:
-            raise ValueError(
-                'data-anno anchor not found in source (annotation can never mount): ' + '; '.join(missing[:12])
-            )
+            raise ValueError('; '.join(missing[:12]))
         result['anchors_checked'] = len([a for a in annots if a.get('type') != 'page-global'])
 
     if routes_file:
@@ -176,36 +306,46 @@ def check_assets(directory: Path, src: Optional[Path] = None, routes_file: Optio
             page = str(a.get('page') or '')
             matcher = a.get('routeMatcher') or ''
             if page in redirect_paths:
-                unmatched.append(f'{page}#{a.get("id")} page is a redirect route (never renders); point at the real page')
+                unmatched.append(f'[判据2] {block_label(a)} page 为重定向路由，页面不会渲染')
                 continue
             if matcher:
                 pattern = re.compile(matcher)
                 if any(pattern.search(p) for p in renderable_paths):
                     continue
-                # 通配/参数路由（如 /tools/*）无法静态枚举出具体 URL：只要 page 落在
-                # 这类路由下，就降级为提醒，而不是判死。
                 if any(route_matches(p, page) for p in renderable_paths):
-                    warnings.append(f'{page}#{a.get("id")} matcher /{matcher}/ not verifiable against wildcard routes')
+                    warnings.append(f'{block_label(a)} matcher 未能对通配路由静态验证')
                     continue
                 if redirect_paths and any(route_matches(p, page) for p in redirect_paths):
-                    unmatched.append(f'{page}#{a.get("id")} page is a redirect route (never renders); point at the real page')
+                    unmatched.append(f'[判据2] {block_label(a)} page 为重定向路由，页面不会渲染')
                     continue
-                unmatched.append(f'{page}#{a.get("id")} matcher /{matcher}/ matches no route')
+                unmatched.append(f'[判据2] {block_label(a)} routeMatcher /{matcher}/ 未命中真实路由')
                 continue
             if any(route_matches(p, page) for p in renderable_paths):
                 continue
             if redirect_paths and any(route_matches(p, page) for p in redirect_paths):
-                unmatched.append(f'{page}#{a.get("id")} page is a redirect route (never renders); point at the real page')
+                unmatched.append(f'[判据2] {block_label(a)} page 为重定向路由，页面不会渲染')
                 continue
             if ':' in page:
                 prefix = page.split(':')[0]
                 if any(p.startswith(prefix) for p in route_paths):
-                    warnings.append(f'{page} relies on param route; add routeMatcher to be explicit')
+                    warnings.append(f'{page} 为参数路由，建议写 routeMatcher')
                     continue
-            unmatched.append(f'{page}#{a.get("id")} page not in router')
+            unmatched.append(f'[判据2] {block_label(a)} page 不在路由表')
         if unmatched:
-            raise ValueError('Annotation page cannot match any real route: ' + '; '.join(sorted(set(unmatched))[:12]))
+            raise ValueError('; '.join(sorted(set(unmatched))[:12]))
         result['routes_checked'] = len(route_paths)
+
+    if config_path:
+        if not config_path.is_file():
+            raise ValueError(f'--config is not a file: {config_path}')
+        config = json.loads(config_path.read_text(encoding='utf-8'))
+        ref_errors = check_source_refs(config, annots)
+        if ref_errors:
+            raise ValueError('; '.join(ref_errors[:12]))
+        if prd_pages:
+            page_errors = check_prd_pages(annots, prd_pages)
+            if page_errors:
+                raise ValueError('; '.join(page_errors[:12]))
 
     if warnings:
         result['warnings'] = warnings[:12]
@@ -213,15 +353,20 @@ def check_assets(directory: Path, src: Optional[Path] = None, routes_file: Optio
 
 
 def main():
-    ap = argparse.ArgumentParser(description='Validate prototype annotation deploy assets (not DOM mounting/hosting).')
+    ap = argparse.ArgumentParser(description='Validate prototype annotation deploy assets.')
     ap.add_argument('directory', help='annotation-kit dir, e.g. public/annotation-kit')
-    ap.add_argument('--src', help='frontend source dir; verifies every data-anno anchor really exists')
-    ap.add_argument('--routes', help='router file (e.g. src/App.tsx); verifies every page/routeMatcher hits a real route')
+    ap.add_argument('--src', help='frontend source dir')
+    ap.add_argument('--routes', help='router file, e.g. src/App.tsx')
+    ap.add_argument('--config', help='annotation.config.json for sourceRefs / PRD scope')
+    ap.add_argument('--prd-pages', help='comma or newline separated allowed pages for this PRD')
     args = ap.parse_args()
+    prd_pages = parse_prd_pages(args.prd_pages) if args.prd_pages else None
     report = check_assets(
         Path(args.directory).resolve(),
         Path(args.src).resolve() if args.src else None,
         Path(args.routes).resolve() if args.routes else None,
+        Path(args.config).resolve() if args.config else None,
+        prd_pages,
     )
     print('Deployment assets valid: ' + json.dumps(report, ensure_ascii=False))
 
