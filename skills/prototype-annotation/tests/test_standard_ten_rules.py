@@ -132,6 +132,47 @@ class TenRulesTests(unittest.TestCase):
         self.assertIn("[判据2]", msg)
         self.assertIn("未覆盖本块 page", msg)
 
+    def test_rule2_fake_page_and_matcher_both_wrong(self):
+        self._routes_with_catchall()
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        msg = self.check_raises(
+            base_annotation(page="/zzz/nope", routeMatcher="nope$"),
+            prd_pages=["/zzz/nope"],
+        )
+        self.assertIn("不在真实路由表", msg)
+        self.assertIn("未命中任何真实路由", msg)
+
+    def test_rule2_valid_page_and_matcher(self):
+        self._routes_with_catchall()
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        write_kit(
+            self.root,
+            [base_annotation(page="/engage/create", routeMatcher="engage/create")],
+        )
+        MODULE.check_assets(
+            self.root,
+            src=self.src,
+            routes_file=self.src / "App.tsx",
+            config_path=self.config,
+            prd_pages=["/engage/create"],
+        )
+
+    def test_rule2_prefix_wildcard_page_ok_with_and_without_matcher(self):
+        (self.src / "App.tsx").write_text('<Route path="/tools/*" />\n<Route path="*" />', encoding="utf-8")
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        for ann in (
+            base_annotation(page="/tools/whats/friends"),
+            base_annotation(page="/tools/whats/friends", routeMatcher="tools/whats/friends$"),
+        ):
+            write_kit(self.root, [ann])
+            MODULE.check_assets(
+                self.root,
+                src=self.src,
+                routes_file=self.src / "App.tsx",
+                config_path=self.config,
+                prd_pages=["/tools/whats/friends"],
+            )
+
     def test_rule8_four_empty_one_substantive(self):
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
         shell = """### 页面内容\n暂无\n### 交互说明\n暂无\n### 业务规则\n暂无\n### 字段说明\n本块不涉及字段\n### 待确认\n暂无\n"""
