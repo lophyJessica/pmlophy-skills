@@ -3,74 +3,74 @@ name: product-manager-workflows
 description: 当要把想法、客户问题、干系人诉求、会议记录、调研、指标、截图或需求池条目，转成 PRD、用户故事、验收标准、MVP 范围、优先级、发布说明、实验计划、竞品分析、路线图选项、设计评审意见或研发交接规格等产品交付物时用。面向软件产品经理的通用工作流。
 ---
 
-# Product Manager Workflows
+# 产品经理工作流
 
-## Operating Principles
+## 运作原则
 
-Start by identifying the artifact the user needs and the decision it should support. If the request is vague, infer a sensible default and state assumptions briefly instead of blocking.
+先识别用户需要的交付物及其要支撑的决策。若请求模糊，推断合理默认并简要说明假设，不要无故阻塞。
 
-Favor concrete product thinking:
-- Define the user, problem, goal, constraints, and success metric before proposing features.
-- Separate facts, assumptions, open questions, and recommendations.
-- Make tradeoffs explicit: scope, timeline, risk, effort, dependencies, and user impact.
-- Translate product intent into engineering-ready details when handoff is requested.
-- Keep artifacts concise enough for a working team to read and act on.
+倾向具体的产品思考：
+- 在提功能前先定义用户、问题、目标、约束与成功指标。
+- 区分事实、假设、开放问题与建议。
+- 显式权衡：范围、时间、风险、工作量、依赖与用户影响。
+- 需要交接研发时，把产品意图翻译成工程可执行的细节。
+- 交付物保持简洁，便于团队阅读与行动。
 
-For missing context, ask at most three high-value questions only when the output would otherwise be misleading. Otherwise, proceed with assumptions and mark them.
+缺少上下文时，仅在否则会产生误导输出时，最多问三个高价值问题。否则带着假设推进并标明假设。
 
-## Workflow Router
+## 工作流路由
 
-Use the smallest workflow that matches the request:
+用与请求匹配的最小工作流：
 
-- PRD, feature spec, product requirements, or "write a requirements doc": use `references/prd-template.md`.
-- User stories, acceptance criteria, Jira tickets, Linear issues, QA checklist, or engineering handoff: use `references/story-acceptance-template.md`.
-- Competitor analysis, market scan, benchmark, positioning, or strategy memo: use `references/research-analysis-template.md`.
-- Prioritization, roadmap, MVP, or scope tradeoff: produce options with impact, effort, confidence, risk, and recommendation.
-- Meeting notes or messy input: extract decisions, requirements, risks, owners, open questions, and next actions.
-- Design review or prototype critique: assess user goal fit, information hierarchy, interaction clarity, edge states, accessibility, and launch risk.
+- PRD、功能规格、产品需求或「写需求文档」：使用 `references/prd-template.md`。
+- 用户故事、验收标准、Jira 工单、Linear issue、QA 清单或研发交接：使用 `references/story-acceptance-template.md`。
+- 竞品分析、市场扫描、基准、定位或战略备忘：使用 `references/research-analysis-template.md`。
+- 优先级、路线图、MVP 或范围权衡：给出含影响、工作量、信心、风险与建议的选项。
+- 会议记录或杂乱输入：提取决策、需求、风险、负责人、开放问题与下一步。
+- 设计评审或原型点评：评估用户目标契合、信息层级、交互清晰度、边界状态、无障碍与上线风险。
 
-## Default PM Flow
+## 默认 PM 流程
 
-1. Restate the product objective in one sentence.
-2. Identify target users and top user jobs.
-3. Convert the problem into measurable outcomes.
-4. Propose the smallest useful scope first, then optional expansions.
-5. List non-goals to prevent scope creep.
-6. Define success metrics, guardrail metrics, and instrumentation needs.
-7. Produce deliverables in the format the user requested.
-8. End with open questions, risks, and recommended next steps when useful.
+1. 用一句话重述产品目标。
+2. 识别目标用户与核心用户任务。
+3. 把问题转化为可衡量结果。
+4. 先提最小有用范围，再提可选扩展。
+5. 列出非目标以防范围蔓延。
+6. 定义成功指标、护栏指标与埋点需求。
+7. 按用户要求的格式产出交付物。
+8. 有用时，以开放问题、风险与建议下一步收尾。
 
-## Artifact Guidance
+## 交付物指引
 
-For PRDs, emphasize problem framing, success metrics, user scenarios, requirements, non-goals, dependencies, risks, rollout, analytics, and acceptance criteria. Do not bury key decisions in prose.
+PRD 侧重问题框定、成功指标、用户场景、需求、非目标、依赖、风险、发布、分析与验收标准。不要把关键决策埋在长文中。
 
-For tickets and user stories, include:
-- User story
-- Context
-- Functional requirements
-- Acceptance criteria in Given/When/Then where useful
-- Edge cases
-- Analytics or logging
-- Dependencies
-- Test notes
+工单与用户故事须包含：
+- 用户故事
+- 上下文
+- 功能需求
+- 验收标准（适用时用 Given/When/Then）
+- 边界情况
+- 分析或日志
+- 依赖
+- 测试说明
 
-For prioritization, use a lightweight scoring table when the user gives multiple ideas. Prefer transparent scoring over false precision.
+做优先级时，用户给出多个想法可用轻量评分表。宁要透明评分，不要虚假精确。
 
-For research and competitor work, distinguish verified facts from inference. If current market information is needed, browse or ask for permission according to the active environment. Cite sources when using external information.
+调研与竞品工作须区分已核实事实与推断。需要当前市场信息时，按当前环境浏览或征求许可。使用外部信息时引用来源。
 
-For stakeholder-facing writing, use crisp business language. For engineering-facing writing, use unambiguous behavior, states, inputs, outputs, errors, and data needs.
+面向干系人用干脆的业务语言。面向研发用无歧义的行为、状态、输入、输出、错误与数据需求。
 
-## Output Style
+## 输出风格
 
-Match the user's requested language. If not specified, use the user's language.
+匹配用户要求的语言。未指定则用用户语言。
 
-Use tables for comparison, prioritization, acceptance criteria matrices, and roadmap options. Use bullets for requirements and risks. Use short prose for reasoning and recommendations.
+对比、优先级、验收矩阵与路线图选项用表格。需求与风险用列表。推理与建议用短段落。
 
-Avoid overproducing long documents when the user asks for a quick draft. Offer a compact version first unless the user asks for a full spec.
+用户要快速草稿时不要过度产出长文档。除非用户要完整规格，先给紧凑版。
 
-## References
+## 参考
 
-Read only the relevant reference:
-- `references/prd-template.md` for PRDs and feature specs.
-- `references/story-acceptance-template.md` for stories, acceptance criteria, tickets, and QA.
-- `references/research-analysis-template.md` for competitor, market, user research, and analytics analysis.
+只读相关参考：
+- `references/prd-template.md`：PRD 与功能规格。
+- `references/story-acceptance-template.md`：故事、验收标准、工单与 QA。
+- `references/research-analysis-template.md`：竞品、市场、用户调研与分析。

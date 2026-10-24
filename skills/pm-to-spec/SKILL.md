@@ -10,37 +10,37 @@ metadata:
     related_skills: [pm-discovery-dialogue, pm-handoff, pm-research]
 ---
 
-# PM to Spec
+# PM 转规格
 
-## Overview
+## 概述
 
-Convert a conversation, confirmed research result, or approved product decision into a compact specification that Codex, Workbuddy, Cursor, or another execution agent can act on. This is synthesis, not another interview.
+把对话、已确认的调研结果或已批准的产品决策，压缩成 Codex、Workbuddy、Cursor 或其他执行 agent 可行动的规格。这是综合整理，不是再次访谈。
 
-## When to Use
+## 何时使用
 
-Use when:
+在以下情况使用：
 
-- the user has already discussed and confirmed the goal;
-- a researched decision needs to become executable work;
-- a task must be handed to an external coding agent;
-- a large request needs a clear scope, preservation layer, and acceptance gate.
+- 用户已讨论并确认目标；
+- 调研结论需要变成可执行工作；
+- 任务须交给外部编码 agent；
+- 大请求需要清晰的范围、保留层与验收门禁。
 
-Do not use when key product decisions remain unresolved; use `pm-discovery-dialogue` first. Do not use for a trivial one-line instruction.
+关键产品决策未定时不要用；先用 `pm-discovery-dialogue`。琐碎的一行指令不要用本 skill。
 
-## Process
+## 流程
 
-1. **Read the source conversation and artifacts** — do not ask again what is already known.
-2. **State the problem from the user's perspective.**
-3. **Define the desired outcome and user-visible behavior.**
-4. **Separate change layer from preservation layer.**
-5. **List scope and explicit out-of-scope items.**
-6. **Write constraints, red lines, dependencies, and data-model limits.**
-7. **Define verification from external behavior first, then build/tests and delivery evidence.**
-8. **Name the owner, machine, repository, branch, and deployment responsibility.**
+1. **阅读源对话与产物** — 不要重复追问已知信息。
+2. **从用户视角陈述问题。**
+3. **定义期望结果与用户可见行为。**
+4. **区分变更层与保留层。**
+5. **列出范围与明确的范围外项。**
+6. **写约束、红线、依赖与数据模型限制。**
+7. **先定义外部可验证行为，再写构建/测试与交付证据。**
+8. **写明负责人、机器、仓库、分支与部署责任。**
 
-If a contradiction is discovered, stop synthesis and surface the contradiction instead of silently choosing.
+若发现矛盾，停止综合并呈现矛盾，不要静默选边。
 
-## Spec Template
+## 规格模板
 
 ```markdown
 # <Task title>
@@ -86,42 +86,42 @@ If a contradiction is discovered, stop synthesis and surface the contradiction i
 - Upload/deploy: <who does what>
 ```
 
-## Agent Delivery Rules
+## Agent 交付规则
 
-For code tasks, begin the actual instruction with a direct execution sentence: modify the existing project, do not save the instruction as a document, and do not output only a plan.
+代码类任务，实际指令须以直接执行句开头：修改既有项目，不要把指令存成文档，不要只输出计划。
 
-Include:
+须包含：
 
-- `git pull --ff-only` before edits;
-- exact project path and target scope;
-- existing work to preserve;
-- build command;
-- unique ZIP name and “解压即根” structure when packaging is required;
-- complete copy-paste upload commands when the project pipeline requires them;
-- explicit owner for upload and deployment;
-- no claim of deployment without independent verification.
+- 编辑前 `git pull --ff-only`；
+- 确切项目路径与目标范围；
+- 须保留的既有工作；
+- 构建命令；
+- 需要打包时的唯一 ZIP 名与「解压即根」结构；
+- 项目流水线需要时的完整可复制上传命令；
+- 上传与部署的明确负责人；
+- 无独立核实不要声称已部署。
 
-Do not make the agent infer the project path, reference page, data contract, or acceptance standard when those facts are available.
+在事实可得时，不要让 agent 推断项目路径、参考页、数据契约或验收标准。
 
-## Forge Adaptation
+## Forge 适配
 
-For Forge projects:
+Forge 项目：
 
 ```text
 context/ > templates/ > prd-docs/
 ```
 
-- Use `context/` as the business source of truth;
-- use `templates/` for document structure;
-- treat `prd-docs/` as generated output;
-- preserve Dexie schema, API contract, route structure, existing annotation anchors, and user changes unless explicitly in scope;
-- separate local build, incoming upload, manual deployment, and user browser acceptance;
-- never call HTTP 200 alone proof of a new deployment.
+- 以 `context/` 为业务权威来源；
+- 用 `templates/` 作文档结构；
+- 将 `prd-docs/` 视为生成输出；
+- 除非明确在变更范围内，保留 Dexie schema、API 契约、路由结构、既有标注锚点与用户改动；
+- 区分本地构建、传入上传、人工部署与用户浏览器验收；
+- 不要仅凭 HTTP 200 就当作新部署已生效。
 
-## Verification Checklist
+## 验收清单
 
-- [ ] Spec synthesizes confirmed decisions without reopening them.
-- [ ] Problem, outcome, scope, preservation layer, and out-of-scope are explicit.
-- [ ] Every important claim has a source or is labeled as an assumption.
-- [ ] Agent path, owner, branch, build, delivery, and acceptance are explicit.
-- [ ] The specification is small enough for the chosen agent to execute reliably.
+- [ ] 规格综合已确认决策，不重开已定问题。
+- [ ] 问题、结果、范围、保留层与范围外明确。
+- [ ] 重要主张有来源，或标为假设。
+- [ ] Agent 路径、负责人、分支、构建、交付与验收明确。
+- [ ] 规格足够小，所选 agent 能可靠执行。

@@ -11,62 +11,62 @@ metadata:
     related_skills: [pm-to-spec, pm-discovery-dialogue]
 ---
 
-# PM Prototype Decision
+# PM 原型决策
 
-## Overview
+## 概述
 
-Use a throwaway prototype as a decision instrument, not as an accidental production implementation. The prototype must answer one named product question quickly, expose the relevant state or interaction, and leave the validated decision ready for the real implementation.
+把一次性原型当作决策工具，而不是误当成生产实现。原型须快速回答一个已命名的产品问题，暴露相关状态或交互，并使已验证的决策可供真实实现使用。
 
-## When to Use
+## 何时使用
 
-Use when:
+在以下情况使用：
 
-- it is unclear what a page or workflow should look like;
-- a state machine or business flow is hard to reason about on paper;
-- multiple UI directions need comparison;
-- a non-developer needs something concrete to react to;
-- implementing directly would risk expensive rework.
+- 页面或工作流形态尚不清晰；
+- 状态机或业务流程在纸面上难以推理；
+- 需要对比多种界面方向；
+- 非研发人员需要可操作的具象物来反馈；
+- 直接实现可能导致昂贵返工。
 
-Do not use when the design is already confirmed or when the task is a mechanical change to an existing page.
+以下情况不要使用：设计已确认，或任务只是对现有页面的机械修改。
 
-## Choose the Prototype Shape
+## 选择原型形态
 
-- **UI question** — produce one runnable page with several clearly different variants, switchable without changing production routes.
-- **Workflow/state question** — produce one runnable page with free-play actions and a guided walkthrough for important edge cases.
-- **Information architecture question** — produce a small clickable skeleton that tests navigation and hierarchy, not visual polish.
+- **界面问题** — 做一个可运行页面，含若干清晰不同的变体，在不改生产路由的前提下可切换。
+- **流程/状态问题** — 做一个可运行页面，支持自由操作，并对重要边界情况提供引导式走查。
+- **信息架构问题** — 做一个小型可点击骨架，验证导航与层级，而非视觉打磨。
 
-If the question is ambiguous, state the assumption and choose the smallest artifact that can disambiguate it.
+若问题含糊，写明假设，并选择能澄清问题的最小产物。
 
-## Rules
+## 规则
 
-1. Write the question at the top of the prototype.
-2. Keep it disposable and clearly marked `PROTOTYPE`.
-3. Locate it near the relevant work but outside production paths, or in a dedicated scratch area.
-4. Make it runnable with one obvious command or by opening one HTML file.
-5. Keep state in memory by default; do not connect real databases or production APIs.
-6. Show the full relevant state after actions or variant changes.
-7. Compare options honestly; do not silently make one option look better.
-8. Skip production polish, broad error handling, and abstractions.
-9. For users with visual impairment, provide a structured text description of each variant and state, not screenshots alone.
+1. 在原型顶部写出要回答的问题。
+2. 保持可丢弃，并明确标记 `PROTOTYPE`。
+3. 放在相关工作附近但不在生产路径内，或放在专用草稿区。
+4. 用一条明显命令或打开一个 HTML 文件即可运行。
+5. 默认状态放在内存中；不要连接真实数据库或生产 API。
+6. 操作或切换变体后，展示完整相关状态。
+7. 诚实对比选项；不要暗中让某一选项更好看。
+8. 跳过生产级打磨、宽泛错误处理与过度抽象。
+9. 对有视觉障碍的用户，提供各变体与状态的结构化文字说明，不要只靠截图。
 
-## Decision Loop
+## 决策闭环
 
-1. Name the question.
-2. Build the smallest runnable artifact.
-3. Let the user operate it or review structured output.
-4. Record the verdict:
-   - selected direction;
-   - rejected directions and why;
-   - unresolved questions;
-   - production acceptance criteria.
-5. Convert the verdict with `pm-to-spec` before changing real code.
-6. Delete the prototype or keep it only where the project explicitly treats it as a reference artifact.
+1. 命名问题。
+2. 构建最小可运行产物。
+3. 让用户操作或审阅结构化输出。
+4. 记录结论：
+   - 选定方向；
+   - 被拒绝的方向及原因；
+   - 未决问题；
+   - 生产验收标准。
+5. 在改真实代码前，用 `pm-to-spec` 把结论转成规格。
+6. 删除原型，或仅在项目明确将其当作参考产物时保留。
 
-## Verification Checklist
+## 验收清单
 
-- [ ] The prototype answers one explicit question.
-- [ ] It runs without production credentials or data.
-- [ ] Relevant states and transitions are visible.
-- [ ] The user can compare or exercise the alternatives.
-- [ ] The verdict and rejection reasons are recorded.
-- [ ] No prototype-only code was mistaken for production code.
+- [ ] 原型回答一个明确问题。
+- [ ] 无需生产凭据或数据即可运行。
+- [ ] 相关状态与迁移可见。
+- [ ] 用户能对比或操作各备选方案。
+- [ ] 结论与拒绝理由已记录。
+- [ ] 没有把仅用于原型的代码误当作生产代码。

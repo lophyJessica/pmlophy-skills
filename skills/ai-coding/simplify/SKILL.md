@@ -2,51 +2,51 @@
 name: simplify
 description: 当代码写好准备交人评审时、或写与评审代码注释时自动使用。判定标准是代码能跑通并达成既定目标，且有自测或必要的人工验证。
 ---
-Review changes in the current branch, or in the scope the user specifies. Apply these criteria without changing behavior. Only touch code in that scope, and run the relevant existing checks after changes.
+审阅当前分支或用户指定范围内的改动。按下列标准应用，不改变行为。只动该范围内代码，改完后跑既有相关检查。
 
-## Word choice in code and comments
+## 代码与注释的用词
 
-Variable names, function names, and comments are all prose. Apply Orwell's rules ("Politics and the English Language") to each:
+变量名、函数名与注释都是文字。对每一处应用奥威尔规则（《政治与英语》）：
 
-> Never use a long word where a short one will do.
-> 
-> If it is possible to cut a word out, always cut it out.
-> 
-> Never use the passive where you can use the active.
-> 
-> Never use a foreign phrase, a scientific word, or a jargon word if you can think of an everyday English equivalent.
+> 能用短词就不要用长词。
+>
+> 能删一个词就删一个词。
+>
+> 能用主动就不要用被动。
+>
+> 能想到日常说法，就不要用外来语、术语或行话。
 
-Latinate vocabulary (reconcile, coalesce, normalize, reconciliation) sounds technical and abstract; Anglo-Saxon words (prune, run, watch, stop, drop, walk) are short and physical. Prefer the Saxon word.
+拉丁化词汇（reconcile、coalesce、normalize、reconciliation）听起来抽象；盎格鲁-撒克逊短词（prune、run、watch、stop、drop、walk）更具体。优先后者。
 
-### Names
+### 命名
 
-1. **One word per concept, one concept per word.** Keep a vocabulary. If `sync` names "pulling remote changes," it cannot also name "flushing edits to disk;" rename one of them.
-2. **Cut words the context already carries.** A module named `workspaceWatcher` does not need `startNativeWorkspaceWatcher`; `watchWorkspace` says the same thing.
-3. **A compound name is usually a hedge:**
+1. **一词一概念，一概念一词。** 维护词汇表。若 `sync` 表示「拉取远程变更」，就不能再表示「刷盘」；须重命名其一。
+2. **删掉上下文已承载的词。** 模块叫 `workspaceWatcher` 时，不必 `startNativeWorkspaceWatcher`；`watchWorkspace` 已够清楚。
+3. **复合名通常是退路：**
 
-- ❌ `lastObservedDiskContent` is a specification to defend
-- ✅ `baseline` is a readable description
+- ❌ `lastObservedDiskContent` 是在辩护规格
+- ✅ `baseline` 是可读的描述
 
-### Comments
+### 注释
 
-State, in plain English, the constraint the code cannot show: why the **non-obvious** exists.
+用平实中文写出代码无法表达的约束：为何存在**不显而易见**的东西。
 
-- ✅ If code is complex and the implementation is non-obvious, add a comment.
-- ✅ If a function contains complex behaviors or side effects, add a doc comment.
-- 🗑️ If a comment narrates change history from the conversation, delete it.
-- 🗑️ If a comment restates code whose behavior is self-evident, delete it.
+- ✅ 代码复杂且实现不直观时，加注释。
+- ✅ 函数含复杂行为或副作用时，加文档注释。
+- 🗑️ 注释只是在复述对话里的变更历史时，删掉。
+- 🗑️ 注释只是重述自解释代码时，删掉。
 
-## Code structure
+## 代码结构
 
-1. **Inverted pyramid.** Within a file, lead with the exported or significant functions and push helpers below them. Don't bury the lead.
-2. **Related concepts over monoliths.** Break a large file into modules that each own one concept.
-3. **Combine overlapping concepts.** If two types, functions, or constants overlap significantly, merge them. The fewer distinct concepts a reader must hold in their head, the better.
-4. **Use shared code.** Common utilities (ex. file path parsing) may exist in the codebase already. Check for library or utility functions before inlining.
-5. **Derivability.** If a value can be computed from values already in scope, don't pass or store it separately. Removing derivable state often simplifies signatures, types, and control flow in one move. Example: an `isDirty` parameter that is always `editorContent !== baseline` can be dropped.
+1. **倒金字塔。** 文件内先写导出或重要函数，辅助函数下沉。不要埋没重点。
+2. **相关概念优于巨石文件。** 大文件按概念拆模块，各管一事。
+3. **合并重叠概念。** 类型、函数或常量高度重叠则合并。读者脑中概念越少越好。
+4. **用共享代码。** 通用工具（如路径解析）可能已在库中。内联前先找库函数。
+5. **可推导性。** 若值可由作用域内已有值算出，不要单独传或存。去掉可推导状态常能一次简化签名、类型与控制流。例：恒为 `editorContent !== baseline` 的 `isDirty` 参数可去掉。
 
-## Overfitting
+## 过拟合
 
-Code must stand on its own. If a change only makes sense to someone who watched it happen (this conversation, this PR), it is overfitted. Write for the reader who arrives with no history.
+代码须自洽。若改动只有看过本次对话或本 PR 的人才懂，就是过拟合。写给没有历史的读者。
 
-- If a name or comment needs the conversation to be understood, rewrite it against the codebase's own vocabulary.
-- **No backwards compatibility with unshipped code.** Supporting an old signature, alias, or data shape that only existed earlier in the same branch is compatibility with something that was never deployed. Delete the old path and update its callers.
+- 若名称或注释需要对话才能懂，按代码库既有词汇重写。
+- **不要为未上线代码做向后兼容。** 仅为同分支早期存在的旧签名、别名或数据形状做兼容，等于兼容从未部署的东西。删掉旧路径并更新调用方。
