@@ -5,110 +5,250 @@ description: Low-intrusion product-logic annotation workflow for existing protot
 
 # Vitamin Prototype Annotation
 
-## Core Principle
+## 1. 何时用本 Skill、两种工作流入口
 
-Treat annotations as an external explanation layer, not as business UI. Keep the original prototype and business PRD clean. Add only the smallest required runtime hook, selector hints, and annotation documents.
+### 1.1 适用场景与交付物
 
-## Annotation Language Standard (Product View — Mandatory)
+- **适用**：已有 HTML / React / Vue / SPA / 静态原型，需要把 PRD 业务规则映射到页面区域，生成「角标 + 侧栏面板」评审体验；检查原型与 PRD 不一致；为评审与研发交接提供结构化说明。
+- **交付物**：本迭代 PRD 套件下的 annotations 源文件 + 编译进原型的 `annotation.bundle.json` + 通过 §7 门禁后的可访问原型。**编译通过不等于页面上能看到角标**；以浏览器实测为准。
+- **价值边界**：标注是外挂解释层（见 §2.1），不是业务 UI，不改变业务功能。
 
-Annotations are read by **business stakeholders and reviewers**, not developers. Write in business language, not technical language:
+### 1.2 初始化 vs 增量更新
 
-- **Page identification**: use the project's breadcrumb or page name (e.g. "本模块/列表页"), NOT URL/route (e.g. `/records`).
-- **Status / enum values**: use the project's Chinese business names as primary text (草稿/处理中/已完成/已关闭), English enum only in parentheses for developer cross-reference — never as the main description.
-- **Tabs / filters**: use the project's visible Chinese names (全部/待处理/我的/已归档).
-- **Rules**: business language ("分配后48小时未首次跟进自动回收，回退待分配"), NOT code logic.
-- **Fields**: use visible Chinese labels (名称/负责人/状态), not internal field names (recordName/ownerId).
-- **Audience**: business reviewers — developers look up English enums in the PRD; annotations do not carry developer-facing references.
+- **Initialization**：目标项目尚无 annotation 层（无 `annotation-kit`、无 annotations 源、或未编译 bundle）。
+- **Incremental update**：已有 annotation 层，且 PRD、页面代码、锚点或标注内容有变更。
+- **必须先问**：用户未明确要「初始化」还是「增量更新」时，**停下来询问**，再改文件。
 
-Annotation blocks whose main descriptions are English enums or technical routes are non-compliant and must be rewritten.
+## 2. 核心原则（三条模型 + 一条边界）
 
-## v2 标注层级与约束
+### 2.1 标注是外挂解释层，不污染 PRD / 业务代码
 
-把实现信息按三层组织，避免用一个角标承载所有内容：
+Treat annotations as an external explanation layer, not as business UI. Keep the original prototype and business PRD clean. Add only the smallest required runtime hook, selector hints, and annotation documents. The page annotation runtime is strictly read-only: never add in-page editing, drafts, save APIs, or browser-to-Markdown write-back. Content changes only by editing Markdown/config in the workspace or asking the agent to update them.
 
-1. **字段级**：单个字段的已确认必填、格式、范围、精度、默认值、唯一性和校验时机。
-2. **区域级**：同一表单区域或功能区域的联动、条件必填、共同校验和区域级结果；表单“基本信息”通常合并为一个 `field` 块，不逐字段拆分普通字段。
-3. **整页级**：跨区域的页面准入、保存/提交防重复、未保存离开拦截、失败重试、页面状态和返回行为；使用 `type=page-global`，不挂元素 selector，也不把整页规则硬挂到按钮角标。
+### 2.2 页面层 vs 状态层（真实路由 + DOM 状态）
 
-区域级聚合不等于删字段：字段说明仍应完整保留。字段说明 **优先从「字段清单详细稿 TSV」生成完整多列 Excel 表**（13 列：字段所属分组 / 字段名称 / 字段类型 / 字段来源 / 字段说明 / 必填性 / 新增页 / 编辑页 / 列表展示 / 可筛选 / 详情展示 / 取值说明 / 备注），逐列忠于 TSV、无值的列保留 `-`、不编造；每张表下方标注来源（如 `来源：线索字段清单（详细稿）.tsv`）。**无 TSV 的模块**先退化用四列表格并标注"待补字段清单 TSV"。字段事实以字段清单 TSV 为唯一源，跨字段规则以 PRD 为准，页面交互以 Demo 规格为准；三者冲突或缺失时写入"待确认"评审记录。
+标注分两层：**页面**（真实路由）与**状态**（同一 URL 下靠 DOM 区分的可见形态，如弹窗、抽屉、向导步骤、展开行）。不要把状态写成不存在的子路由。
 
-字段说明示例（有 TSV → 13 列完整 Excel 表）：
+#### 2.2.1 `page` 与 `routeMatcher`
 
-| 字段所属分组 | 字段名称 | 字段类型 | 字段来源 | 字段说明 | 必填性 | 新增页 | 编辑页 | 列表展示 | 可筛选 | 详情展示 | 取值说明 | 备注 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 基础信息 | 线索来源 | 单选 | 用户填写 | 线索获取渠道 | 必填 | Select | Select | 是 | 是 | 是 | ONLINE=官网, ACTIVITY=活动 | AI评分维度之一 |
+- `page` 必须是路由表中的**代表性真实路由**（如 `App.tsx`），禁止伪造 `/engage/behaviors/modal`、`/xxx/step2` 等 SPA 不存在的路径。
+- `routeMatcher` 覆盖**同一页面**的等价路由（例：表单 `engage/(create|engage-create|edit/|look/)`，列表 `engage/behaviors$`）。
+- 菜单/模块路由迁移后（如 `/auth/tags` → `/engage/tags`）必须同步 `page` / `routeMatcher`，否则标注可能**静默消失**（编译仍可能通过）。
 
-无 TSV 模块退化示例（4 列，标注"待补字段清单 TSV"）：
+#### 2.2.2 锚点、`scopeLabel`、「需操作后查看」
 
-| 字段 | 展示/输入类型 | 业务说明 | 约束与备注 |
-| --- | --- | --- | --- |
-| 名称 | 文本 | 记录本页面对象的显示名称 | 必填性、长度和唯一性以字段清单为准 |
-| 状态 | 标签/只读 | 展示当前业务状态 | 状态变更通过页面动作触发 |
+- 弹窗、抽屉、展开行、向导步骤、页签内区域：**不**用独立 `page` 路径；用 `target.selector` 锚定 DOM，元素在 DOM 中才挂角标。
+- 配置 `scopeLabel` 标明状态（如 `弹窗：新建/编辑行为`），面板以绿色标签展示。
+- 需先操作才可见的区域：进页无角标**正常**；面板可标「需操作后查看」，**不得**判为漏标。
 
-`page-global` 条目必须在配置中保留页面路径和 Markdown block 映射，但 `target` 不提供有效 CSS selector。编译器会为其生成空 target，runtime 将徽章定位到通用页面顶部，并通过 `isPageGlobal` 处理定位和跳转。
+### 2.3 角标编号（routeMatcher 分组）
 
-## Annotation Classification & Panel UI Standard (Mandatory)
+角标数字 = `annotation.id`（runtime 直接渲染）。编号按 **routeMatcher 分组**（无 `routeMatcher` 时以 `page` 为分组键），禁止用伪造子路由或两套配置各编一套。
 
-Annotations are displayed in a **panel UI** (like Axure's annotation sidebar), not only as page badges. Every annotation block must carry a **type** classification for tab filtering:
+- **同一 routeMatcher 分组内**：`id` 连续且唯一；禁止宿主页与弹窗/抽屉各从 `1` 开始（否则同屏两个「1」）。
+- **同屏共存**（宿主页 + 弹窗/抽屉）：宿主页 `1..n`，弹窗/抽屉 `n+1..m`。
+- **不同 URL**：各自从 `1` 开始；不同分组可重复数字，同一分组不可重复。
+- 导出全量标注时排序：页面顺序 → DOM 顺序 → `id`。编译器运行时键为 `scope:id`。
 
-### 1. Type Classification (each annotation block must have one)
-- `page` 页面: page-level description (page path, layout overview, global behavior)
-- `page-global` 本页规则: whole-page rules without an element selector
-- `interaction` 交互: click behavior, tab switching, state transitions, expand/collapse
-- `rule` 规则: business rules, validation, permissions, exceptions
-- `field` 字段: field-level description (Chinese labels, constraints, defaults)
-- `pending` 待确认: rules whose source is unclear or awaiting confirmation
+### 2.4 迭代生命周期（随迭代生、随上线死）
 
-- **Entry buttons are floating & draggable**: the annotation entries ("标注清单" and "原型标注") must NOT occupy layout space or cover page controls — they are floating (fixed position), draggable by mouse (user can move them to a non-blocking spot). Implementation: fixed-position container with drag-to-reposition (pointer events), remember position in sessionStorage, no impact on page layout/flow
+- 标注不是 CMS 全量资产：**一个迭代 = 一套 PRD 套件 = 一份 annotations**。不要把历史迭代标注继续挂在原型上，不要做全量标注。
+- 本迭代源文件放在该迭代 PRD 目录（例：`03-产品设计/私域2.0一期/04-评审PRD/annotations/`）。
+- `annotation.workspace.json` 的 `inputs` **仅允许**本迭代 `annotation.config.json`；**禁止**把原型 `public/annotation-kit` 编译产物列为 input（自复制、角标翻倍）。
+- `output` 覆盖写入原型 `public/annotation-kit/annotation.bundle.json`。
+- 默认不建 `changelog.md` / `versions/`；业务 PRD 保留变更历史。用户明确要求审计快照时，仅在 annotations 目录内维护，且不进入默认 runtime 输入。
 
-## 页面层 vs 状态层（Mandatory — 2026-10 私域2.0）
+## 3. 准备与目录（本迭代放哪、输入输出什么）
 
-标注模型分两层：**页面**（真实路由）与**状态**（同一 URL 下靠 DOM 区分的可见形态）。不要把弹窗、抽屉、向导步骤写成不存在的子路由。
+### 3.1 Required Inputs
 
-### 页面层：`page` 与 `routeMatcher`
+动手前在目标项目发现：
 
-- `page` 写**代表性真实路由**（与 `App.tsx` 等路由表一致），禁止伪造路径，例如 `/engage/behaviors/modal`、`/xxx/step2` 这类 SPA 里不存在的子路由。
-- `routeMatcher` 覆盖**同一页面**的等价路由，例如表单页 `engage/(create|engage-create|edit/|look/)`，列表页 `engage/behaviors$`。
-- 菜单或模块迁移后（如 `/auth/tags` → `/engage/tags`），必须同步改 `page` / `routeMatcher`；否则编译可能仍通过，标注会在线上**静默消失**。
+- 原型实现：静态 HTML、React/Vite/Next、Vue/Nuxt、SPA 或构建产物。
+- 业务 PRD：`prd.md`、`PRD.md`、`requirements.md`、`docs/**/*.md` 或用户指定文件。
+- 已有标注：`annotations/**/*.md`、`annotation.config.json`、`annotation.workspace.json`、`annotation-kit` 或已注入 runtime。
+- 可运行命令：`package.json`、`index.html` 或文档中的脚本。
+- 部署目标：仅本地、静态云预览、协作评审或 Git 审阅更新。
 
-### 状态层：锚点 + `scopeLabel`（不靠路由）
+Never assume a demo layout exists in the target project.
 
-- 弹窗、抽屉、展开行、向导步骤、页签内区域：**不**用独立 `page` 路径区分，用 `target.selector` 锚定 DOM；仅当该元素出现在 DOM 时角标才挂载。
-- 在标注块配置上加 `scopeLabel`，写清所属状态，例如 `弹窗：新建/编辑行为`、`受众筛选-行为页签`。面板会以**绿色标签**展示，便于评审区分宿主页与叠加态。
-- 需要用户先操作才出现的区域：评审进页看不到角标是**正常**的；面板会标为「需操作后查看」，**不得**据此判定为未标注或漏配。
+### 3.2 迭代内 annotations 目录与 `annotation.workspace.json`
 
-## 角标编号（routeMatcher 分组，Mandatory — 2026-10 私域2.0）
+目录选择顺序（无用户指定时）：
 
-角标数字 = `annotation.id`（runtime 直接渲染）。编号按 **routeMatcher 分组**（无 `routeMatcher` 时以 `page` 为分组键），不是按「伪造子路由」或两套配置各编一套。
+1. 用户指定目录。
+2. 项目已有 annotations 目录则沿用。
+3. 主 PRD 旁建 `annotations/`（例：`docs/prd.md` → `docs/annotations/`）。
+4. **附注（多 PRD 历史模式）**：各模块标注可仍在各自 PRD 旁；用最近公共父级的 `annotation.workspace.json` 聚合编译，**不要**为共享 runtime 把所有 md 挪到单目录。当前迭代交付仍以 §2.4 单 input 为准；多 config 合并细节见 `references/annotation-authoring.md`。
+5. 无 PRD 可发现时，在项目根建 `annotations/` 并在回复中说明 fallback。
 
-- **同一 routeMatcher 分组内**：`id` 必须连续且**全局唯一**，禁止宿主页与弹窗各从 `1` 开始（否则同屏会出现两个「1」、两个「3」）。
-- **同一屏会同时出现的块**（宿主页 + 其弹窗/抽屉）：共用一个号段——宿主页 `1..n`，弹窗/抽屉接着 `n+1..m`。
-- **不同 URL 的页面**：各自从 `1` 开始（这一点不变）；不同分组之间可以重复数字，但同一分组内不可重复。
-- 发版前必须用 `check_annotation_assets.py` 校验同一分组内无撞号（见「发版前三道命令」）。
+勿硬编码全局路径（如固定 `docs/annotations/`）除非经上述规则选中。
 
-## 迭代化标注与上下线（Mandatory — 产品口径）
+### 3.3 源码与产物分离
 
-标注不是 CMS 全量资产，而是**一个迭代一套**：一个迭代 = 一套 PRD 套件 = 一份 annotations。标注随迭代生、随上线死；**不要把历史迭代的标注继续挂在原型上，也不要做全量标注。**
+- **源**：Markdown 块（`<!-- anno:start id=... -->` … `<!-- anno:end -->`）、`annotation.config.json`、可选 `coverage.md`。
+- **产物**：`annotation.bundle.json`（可公开部署）；源 PRD 与源 Markdown 不必对外提供。
+- **编译**：`scripts/compile_annotations.py` 校验映射并内联 Markdown。真实项目必须编译后再验收；仅 tiny demo 可用内联 `markdown`。
+- 部署与协作环境细节见 `references/collaboration-deployment.md`（流水线门禁以 §7.1 为准）。
 
-### 目录与编译输入
+## 4. 端到端工作流
 
-- 本迭代标注只放在该迭代 PRD 套件目录下，例如 `03-产品设计/私域2.0一期/04-评审PRD/annotations/`。
-- `annotation.workspace.json` 的 `inputs` **只允许一个输入源**：本迭代的 `annotation.config.json`。**禁止**把原型 `public/annotation-kit` 下的编译产物再列为 input（会自复制、角标翻倍）。
-- `output` 指向 `99-产品原型prototype/public/annotation-kit/annotation.bundle.json`，**覆盖式**写入。
+### 4.1 Workflow A：初始化
 
-### 新迭代开始
+1. **Inspect project type and entry**
+   - React/Vite/SPA：`package.json`、`src`、根 `index.html`。
+   - Static HTML：相关 `.html`。
+   - Built output only：runtime 注入或 bookmarklet。
+   - **出口**：写明项目类型与 HTML/入口路径。**证据**：列出的路径存在。
 
-- 新建本迭代的 `annotations/` 目录与 config，编译覆盖写入原型 bundle；**不**沿用上一轮留在原型里的旧 bundle 内容。
+2. **Read PRDs**
+   - 保留字段、状态、角色、异常、流程；表单页单独提取 page-global（准入、提交边界、返回、未保存离开）。
+   - 不脑补 PRD 未写的通用组件行为。
+   - **出口**：页面级需求清单。**证据**：引用的 PRD 章节列表。
 
-### 本迭代上线后下线标注（原型恢复干净）
+3. **DOM target inventory**
+   - 稳定模块级目标；记录 label、selector 候选、路径、可见性。
+   - Modal/drawer/tab：记录展开操作，在可见后核对锚点；状态块配 `scopeLabel`（§2.2.2）。
+   - **出口**：每页模块表（含隐藏态）。**证据**：关键 `data-anno` 或 selector 与 §2.2 一致。
 
-1. 将原型 `public/annotation-kit/annotation.bundle.json` 里的 `annotations` 置为 `[]`（`runtime` 与业务代码不动）。
-2. 在 `99-产品原型prototype` 执行 `npm run build` 并随正常发版部署。
-3. PRD 目录下本迭代的 annotations 源文件（`.md` 与 `annotation.config.json` 等）**保留留档，不删**；只是不再部署到原型。
+4. **Aggregate by UI module**
+   - 一模块一角标；filter/table/tabs/form/modal/drawer/field group/batch 典型。
+   - 跨区规则集中一个 `page-global`（无 selector）；纯展示页无源规则则不强加。
+   - **出口**：模块与块映射草稿。**证据**：§5.2 范围判断（N 标 / M 不标及理由）。
 
-## 发版前三道命令（Mandatory gate）
+5. **Write annotation Markdown**
+   - 目录见 §3.2；每块 `来源：` 与 `sourceRefs`；不改业务 PRD。
+   - 仅用户明确要求时建 `changelog.md`。
+   - **出口**：`annotations/**/*.md`。**证据**：块与 PRD 来源可追溯。
 
-在业务项目根目录（示例：`/Users/liulongfei/个人文件/WorkSpace/vivo/cms-project`）依次执行，**三条必须全绿**，不得跳过：
+6. **Write `annotation.config.json` / workspace**
+   - `scope`（kebab-case）、`page` / `routeMatcher`、`target`、`markdownFile`、`blockId`、`type`、`scopeLabel`（状态块）；块 `id` 见 §2.3。
+   - 单 runtime 用 `annotation.workspace.json`（§2.4），禁止手工合并多份 config。
+   - **出口**：config + workspace。**证据**：config 条数与 md 块一致。
+
+7. **Compile and validate**
+   - 执行 §7.1 三道命令（含 coverage 时按项目 manifest 传 `--output` / `--coverage`）。
+   - 存在 unmapped requirements、缺块、缺 selector、编译失败 → **停止**。
+   - **出口**：绿色 compile + check + build。**证据**：§7.1 命令原始输出。
+
+8. **Install runtime（最小侵入）**
+   - `scripts/install_annotation_kit.py` 或按 `references/integration-patterns.md` 注入；不替换用户已有配置除非明确要求。
+   - **出口**：`annotation-kit` 在 public/静态目录且 HTML 已引用。**证据**：入口文件中的 script/link。
+
+9. **Browser verification**
+   - Badges：overlay 定位，不改布局；`initialMode` 默认 `preview`。
+   - 隐藏模块：未展开无角标，展开后角标位置正确；`scopeLabel` /「需操作后查看」符合 §2.2.2。
+   - 面板：§8.1 交互流；弹窗只读、可拖放、事件隔离；Markdown 表格/列表正常；切换模式有 toast；refresh 无缓存读 bundle。
+   - **出口**：评审可走完「入口 → 角标 → 详情」。**证据**：无控制台错误；§7.2 运行层勾选。
+
+### 4.2 Workflow B：增量更新
+
+1. Diff PRD、页面、annotations、config。
+2. 分类：added / modified / deleted / moved。
+3. 只改受影响 md 块与 selector/`page`/`routeMatcher`/`scopeLabel`；字段约束与 `来源` / `sourceRefs` 对齐当前 PRD；page-global 集中跨字段规则。
+4. 除非用户要求，不改 runtime 样式与徽章形态。
+5. 仅当模块或需求真删除时移除角标。
+6. 保留补充标注 id（§6.3）。
+7. 重跑 §7.1，再浏览器验证（同 §4.1 第 9 步）。
+   - **出口**：变更块列表 + 全绿 §7.1。**证据**：命令输出与浏览器抽检。
+
+### 4.3 迭代切换与上线后下线（操作）
+
+**新迭代开始**
+
+- 新建本迭代 `annotations/` 与 config；编译**覆盖**原型 bundle，不吃上一轮残留。
+
+**本迭代上线后**
+
+1. 原型 `public/annotation-kit/annotation.bundle.json` 中 `annotations` → `[]`（runtime 与业务代码不动）。
+2. 原型目录 `npm run build` 并随发版部署；§7.1 中 `index.html` 缓存版本见 §7.1。
+3. PRD 侧 annotations 源文件**留档不删**，不再部署到原型。
+
+## 5. 写什么、写多少（范围与内容形态）
+
+### 5.1 业务语言与读者（Annotation Language Standard）
+
+读者是**业务方与评审**，不是开发：
+
+- 页面用面包屑/页面名，不以 URL 作主描述。
+- 状态/枚举用中文业务名，英文仅括号辅助。
+- 规则用业务语言；字段用界面中文标签。
+- 主描述为英文枚举或技术路由的块不合规，须改写。
+
+### 5.2 标 / 不标
+
+执行前应用 `references/annotation-scope.md`，在交付中输出 **「N 处标注 / M 处不标及理由」**。SKILL 不在此重复范围表。
+
+### 5.3 字段·区域·整页三层与 `page-global`
+
+1. **字段级**：单字段必填、格式、范围、精度、默认、唯一、校验时机。
+2. **区域级**：表单区内联动、条件必填、共同校验；普通字段合并为 `field` 块，不逐字段角标。
+3. **整页级**：准入、防重提交、未保存离开、失败重试、返回；`type=page-global`，无 selector，不挂按钮角标。
+
+区域聚合不删字段说明：有 TSV 则 13 列 Excel 表（字段所属分组 / 字段名称 / 字段类型 / 字段来源 / 字段说明 / 必填性 / 新增页 / 编辑页 / 列表展示 / 可筛选 / 详情展示 / 取值说明 / 备注），忠于 TSV、无值填 `-`、表下写来源；无 TSV 用四列表（字段 | 展示/输入类型 | 业务说明 | 约束与备注）并标「待补字段清单 TSV」。字段事实以 TSV 为准，跨字段以 PRD 为准，交互以 Demo 为准；冲突写待确认。`page-global` 须在 config 保留 `page` 与 md 映射；编译器生成空 target，runtime 用 `isPageGlobal` 定位。
+
+### 5.4 块内结构与六 Tab + `type` 分类
+
+**Type**（面板筛选，每块一个）：`page` | `page-global` | `interaction` | `rule` | `field` | `pending`。
+
+**块内正文**：`需求描述` → `来源` → 分组标题 → `- 项名：描述` 列表，禁长段堆砌。
+
+**详情六 Tab**（每块齐全，空 Tab 也展示）：`全部` | `页面内容` | `交互说明` | `业务规则` | `字段说明` | `待确认`。`page-global` 在「页面」Tab 分组展示且保留 runtime 类型。
+
+### 5.5 编写与 config 映射（延伸阅读）
+
+抽取清单、聚合规则、Markdown 块模板、Mermaid 用法、补充标注 `A*`、多 PRD 目录示例 → **`references/annotation-authoring.md`**。生成或更新标注前必读。
+
+## 6. 技术映射（config / 选择器 / 标识）
+
+### 6.1 `annotation.config.json` 字段职责
+
+| 字段 | 用途 |
+| --- | --- |
+| `scope` | 模块命名空间；导出键 `scope:id` |
+| `id` | 角标数字；规则见 §2.3 |
+| `page` | 代表性真实路由 |
+| `routeMatcher` | 同页等价路由正则 |
+| `scopeLabel` | 状态层绿色标签（弹窗/页签等） |
+| `type` | 面板类型筛选（§5.4） |
+| `moduleName` | 面板标题 |
+| `target.selector` | DOM 锚点；`page-global` 无有效 selector |
+| `markdownFile` / `blockId` | 对应 md 块 |
+| `sourceRefs` | 覆盖 `sourceRequirements` |
+| `sourceRequirements` | 声明需映射的需求 id |
+
+每条 annotation 映射一条 md 块；同文件可多块。`annotation.workspace.json` 声明 `inputs`（§2.4）、`output`、可选 `coverage` / `htmlOutput`。
+
+### 6.2 Selector Rules 与低侵入策略
+
+**选择器优先级**：`data-anno` → `data-testid` / `id` / `aria-label` / `name` / `role` → 语义+文案 → class → 生成路径（临时）。
+
+不稳定则模块根加 `data-anno="module-xxx"`。不改 UI 结构、不耦合业务 state。
+
+**集成模式**（栈细节 → `references/integration-patterns.md`）：
+
+1. 不能改源码：bookmarklet / 注入。
+2. 一行 runtime：拷贝 `annotation-kit` + entry 引 css/js。
+3. Selector hint：仅加 `data-anno`。
+4. 组件集成：仅当 DOM 选择器不可靠。
+
+修改新项目类型前读 integration-patterns；协作部署读 collaboration-deployment。
+
+### 6.3 显示 id 与补充 id
+
+- 常规块 id：见 §2.3。
+- 补充标注：`A1`、`A2`、`A3`（同等对待，导出含在内）。
+- 与用户明确要求时可用 `1a`/`1b` 表示从属关系。
+
+### 6.4 Mermaid
+
+可选： fenced `mermaid`；复用 `window.mermaid` 或 config 的 `mermaid.src`；不可用则源码块展示；默认不依赖外网 CDN，离线用本地 mermaid 资产。
+
+## 7. 集成与发版（必做门禁）
+
+### 7.1 发版前三道命令与缓存版本
+
+在业务项目根（例：`/Users/liulongfei/个人文件/WorkSpace/vivo/cms-project`）**依次执行，全绿才算验收**：
 
 ```bash
 python3 <PMLOPHY_SKILLS_PATH>/skills/prototype-annotation/scripts/compile_annotations.py "03-产品设计/私域2.0一期/04-评审PRD/annotations/annotation.workspace.json"
@@ -118,399 +258,138 @@ python3 <PMLOPHY_SKILLS_PATH>/skills/prototype-annotation/scripts/check_annotati
 cd 99-产品原型prototype && npm run build
 ```
 
-说明：`check_annotation_assets.py` 在资产校验之外会拦截三类**静默失败**——(1) `target.selector` 锚点在 `--src` 源码中不存在；(2) `page` / `routeMatcher` 命不中真实路由或只命中重定向路由；(3) 同一 `routeMatcher` 分组内角标 `id` 撞号。仅跑编译、不加 `--src` / `--routes` 不足以交付。
+`check` 额外拦截三类静默失败：(1) 锚点在 `--src` 中不存在；(2) `page` / `routeMatcher` 命不中真实路由或只命中重定向；(3) 同一 routeMatcher 分组内角标 `id` 撞号。仅 compile、不加 `--src`/`--routes` **不算交付**。
 
-## 运行时资源缓存版本（Mandatory）
+每次发版标注或更新 runtime：递增 `index.html` 中 `runtime.css`、`override.css`、`runtime.js` 的 `?v=`（格式 `v=YYYYMMDDx`）。**不递增会被 CDN（如 Cloudflare）长期缓存旧文件**，用户看不到新角标/面板行为。
 
-每次向原型发版标注或更新 `annotation-kit` 运行时，递增 `99-产品原型prototype/index.html` 里 annotation-kit 相关引用上的 `?v=`（`runtime.css`、`override.css`、`runtime.js` 三处），格式 `v=YYYYMMDDx`（日期 + 当日序号）。不递增时 Cloudflare 等 CDN 可能长期缓存旧文件，用户已部署新代码仍看到旧角标或旧面板行为。
+### 7.2 四层校验走查
 
-## 交付前检阅清单（Mandatory）
+每次交付记录四层证据：
 
-发版或交给评审前，人工核对（脚本不能替代全部语义）：
+1. **来源层**：内容可追溯 PRD/字段清单/评审记录，无他项目事实。
+2. **结构层**：块 id 与类型符合 §2.3、§5.3；`sourceRefs` 覆盖 source requirements。
+3. **资产层**：bundle 内联 md、target 完整、coverage 无未映射；表头与数据行计入 coverage，分隔行不计。
+4. **运行层**：route、徽章、面板、六 Tab、表格、定位、滚动、只读边界；控制台无错。
+
+### 7.3 交付前检阅清单
 
 | 检查项 | 做法 |
 | --- | --- |
-| 条数一致 | 角标数量与 `annotation.config.json` 中本迭代块数一致（编译后 bundle 条数一致） |
-| 分组内无重号 | 同一 `routeMatcher`（或同一 `page`）分组内无重复 `id`；宿主页 + 弹窗/抽屉共屏时号段连续 |
-| 需操作区域 | 弹窗/抽屉等块在面板上有 `scopeLabel`；未开弹窗时角标缺失但面板标「需操作后查看」属预期 |
-| 旧迭代已下线 | 原型 bundle 非上一轮残留；新迭代已覆盖编译；上线后 bundle `annotations` 已清空并 rebuild |
-| 路由未漂移 | 菜单/路由迁移后 `page` / `routeMatcher` 与 `App.tsx` 一致 |
+| 条数一致 | 角标数 = config 块数 = bundle 条数 |
+| 分组内无重号 | 见 §2.3 |
+| 需操作区域 | 有 `scopeLabel`；无角标但面板「需操作后查看」属预期 |
+| 旧迭代已下线 | bundle 无残留；上线后 `annotations: []` 已 build |
+| 路由未漂移 | `page` / `routeMatcher` 与路由表一致 |
 | 缓存版本 | `index.html` 三处 `?v=` 已递增 |
 
-## Drag & Click Coexistence Standard (Mandatory — hard-won lesson)
+### 7.4 Agent 交付证据（Tooling + Validation）
 
-Floating draggable toolbars must support BOTH drag AND button clicks. Known pitfalls:
+交付回复须含：
 
-- **NEVER use `setPointerCapture` on the drag container** — it steals pointer/click targets from child buttons; child buttons become unclickable (verified bug: toolbar click dead, 3 rounds of fixes).
-- **Correct pattern**: listen to pointerdown on the drag handle/container, track move/up on `window` (no capture); if movement stays under a threshold → let native `click` fire; if movement exceeds threshold → update position and suppress that one click (to avoid accidental toggle after drag).
-- **Ensure `pointer-events: auto`** explicitly on the floating container and buttons (a full-screen `.vpa-root` must be `pointer-events: none` so it never blocks).
-- **z-index**: floating toolbar must sit above the annotation panel (raise z-index so the panel never covers the toolbar).
-- Verify in browser: click button → works; drag toolbar → position changes without triggering click; drag then click → click still works.
+1. **Scope**：§5.2 的 N/M 判断。
+2. **§7.1**：三道命令与 build 的**真实终端输出**（全绿）。
+3. **Browser**：角标、`scopeLabel`、需操作场景、点击详情、无 JS 错误。
 
-## Panel Tab State Persistence Standard (Mandatory — hard-won lesson)
+终检勾选：
 
-Panel detail tabs must survive re-renders (scroll triggers `scheduleMeasure` → panel `innerHTML` rebuild → tab resets to default without persistence).
+- 已确认 initialization 或 update；未污染业务 PRD。
+- 当前迭代 bundle 仅本迭代标注；每块有 `来源` 与 `sourceRefs`。
+- 表单跨字段有 `page-global`；无冗余同模块角标。
+- Runtime 注入最小化；workspace 编译，禁止手搓合并 config；禁止 bundle 回灌 input。
+- 徽章不改布局；`runtime.zIndexBase` 处理叠层；弹窗可开/关/拖/缩放/导出且事件隔离。
+- 无编辑控件/写回 API；refresh 重读 bundle。
+- `page` 真实、`routeMatcher` 合法、无伪造子路由；静态单页可用 `page: "*"`。
+- 可选 htmlOutput 为渲染后 Markdown；md 预览支持表/列表/任务/标题等。
+- 若未跑 build/浏览器，须说明原因。
 
-- **Root cause pattern**: scroll/resize listeners rebuild the panel DOM (`renderAnnotationPanel` + `innerHTML`), destroying the detail-tab node; reading the tab from the new DOM falls back to the default (`all`).
-- **Correct pattern**: store UI state OUTSIDE the re-rendered DOM — keep a `Map` keyed by card identity (e.g. `detailTabByCard: Map` keyed by `data-annotation-key`); save the current tab on switch, restore it on rebuild:
-  ```js
-  const cardKey = container.closest('[data-annotation-key]')?.dataset.annotationKey;
-  const savedTab = cardKey ? VPA_STATE.detailTabByCard.get(cardKey) : null;
-  const requestedTab = savedTab || container.dataset.detailTab || initialTab;
-  if (cardKey) VPA_STATE.detailTabByCard.set(cardKey, currentTab);
-  ```
-- **Golden rule**: DOM is only a presentation layer; state lives in a persistent store (`VPA_STATE`) outside the rebuilt DOM.
-- Verify in browser: select a detail tab (e.g. 页面内容), scroll the page, confirm the tab stays selected.
+## 8. Runtime 行为标准（评审体验）
 
-## Scroll Event Must Not Rebuild Scrollable Containers (Mandatory — hard-won lesson)
+### 8.1 面板与交互流
 
-A scrollable container must NOT be rebuilt from within its own scroll event (scroll → `scheduleMeasure` → `renderAnnotationPanel` rebuilds the container → `scrollTop/scrollLeft` reset to 0 → scrollbar dead).
+- 流程：「原型标注」入口（白底文档图标）→ 切换标注模式 → **先出编号角标**（非直接出全文）→ 点角标出内容并高亮区域 → 侧栏项可定位。
+- 默认 `preview`：加载不直接展示标注正文。
+- 入口「标注清单」「原型标注」：**浮动可拖**，不占布局、不挡操作；`sessionStorage` 记位置。
+- 面板：白卡片、标题+总数+关闭、「点击条目定位…」；Tab：全部/页面/交互/规则/字段/待确认（品牌绿高亮）；卡片含序号、类型、摘要、展开详情；点击定位 `data-anno`。
+- **CRITICAL**：点入口必须先出角标再出正文，不是简单弹窗直接展示全文。
+- 展开详情：分组规则 + 可折叠长文；样式白卡阴影圆角、品牌绿强调、干净滚动条。
 
-- **Correct pattern**: on scroll, only update elements that follow the business page (e.g. `measureBadges()`); do NOT re-render the panel. Panel re-render should be triggered only by explicit user/data actions (tab switch, expand/collapse, data refresh):
-  ```js
-  window.requestAnimationFrame(() => {
-    VPA_STATE.measureScheduled = false;
-    measureBadges();
-    // never call renderAnnotationPanel() during scroll
-  });
-  ```
-- **Golden rule**: scroll events only update positioning; structural updates (rebuild) are driven by explicit actions, never by the scroll event of the container itself.
-- Verify in browser: panel list `scrollTop` changes 0 → N and stays; inner detail tabs `scrollLeft` changes; tab stays selected after scroll.
+### 8.2 待确认（Pending-Items）
 
-## Pending-Items (待确认) as Review Issue Tracker (Mandatory)
+非 PRD 抽取，是**人工评审问题跟踪**。
 
-The 待确认 tab is NOT extracted from the PRD — it is a **human-entered review issue tracker**. During review, the reviewer types problems they spot into the 待确认 input; these become actionable todo items.
+**模型**：id（块 key+时间戳）、description、source、status、resolution。
 
-### Data model (per issue)
-```
-- id: stable id (annotation block key + timestamp)
-- description: issue text (typed by reviewer)
-- source: which annotation block / page region it belongs to
-- status: open / resolved (checkbox)
-- resolution: solution text (filled when resolving)
+**要求**：每块待确认可录入；全局 Tab 聚合；`localStorage` 持久化（key：项目+页面+annotation key）；解决须填「解决方法」；浏览器不写 PRD 文件。
+
+**导出待办**（全局示例，按块序号+标题分组）：
+
+```md
+## 待办项
+### 序号 1（本模块列表页面）
+- [ ] 问题描述
+  - 解决方法：（待补充）
+- [x] 已解决问题
+  - 解决方法：...
 ```
 
-### Requirements
-- **Per-block**: each annotation block's 待确认 tab has an input field to add issues (tied to that block)
-- **Global**: the global 待确认 tab aggregates all issues from all blocks (grouped by block, filterable)
-- **Persistence**: save to `localStorage` (key: project+page+annotation key; array of issues) — survives refresh
-- **Resolution flow**: each issue has a checkbox (open/resolved) AND a `解决方法` text field — when resolving, write the solution; the resolution is displayed (not just a checkmark)
-- **Export**: button exports a **PRD todo Markdown block** for pasting into the PRD file:
-  ```
-  ## 待办项
-  - [ ] 问题描述（来源：标注块X / 页面区域）
-    - 解决方法：（待补充）
-  - [x] 已解决问题（来源：标注块Y）
-    - 解决方法：已解决方式描述
-  ```
-- **Per-block export**: each annotation block's 待确认 tab (inside its detail view) also has its own "导出待办" button — exports ONLY that block's issues (not global). So a block with issues can be exported individually during review. **Per-block export must ALSO include the block title + todo list** (same grouped format as global, but only that one block):
-  ```
-  ## 待办项
-  ### 序号 X（该块标题）
-  - [ ] 问题描述
-    - 解决方法：（待补充）
-  - [x] 已解决问题
-    - 解决方法：解决方式
-  ```
-- **Global export grouping**: the global "导出待办" must group issues by annotation block, prefixed with 序号（标题）:
-  ```
-  ## 待办项
-  ### 序号 1（本模块列表页面）
-  - [ ] 问题描述
-    - 解决方法：（待补充）
-  - [x] 已解决问题
-    - 解决方法：...
-  ### 序号 2（状态页签与列表视图）
-  - [ ] ...
-  ```
-  Group header uses the annotation badge number + block title, so reviewers can trace which region each todo belongs to.
-- **PRD sync**: browser cannot write PRD files directly (sandbox) — export block → user/Codex merges into PRD; the Markdown todo format enables state to be read back (双向 via the block format)
-- Golden rule: 待确认 = human review input (never auto-extracted from PRD); it is the review-side complement to PRD-side rules
-- **Scrollability**: the per-block issue list and the global issue list must be scrollable (they are new dynamic containers — verify `overflow-y: auto` + a max-height; do NOT rely on the panel's own scroll, and do NOT rebuild them from within their own scroll event). Test: add many issues → list scrolls; panel scroll and tab persistence still work.
+单块导出：仅该块问题，仍含 `## 待办项` 与 `### 序号 X（块标题）`。Golden rule：待确认 = 人工录入，不从 PRD 自动抽取。
 
-### 2. Panel UI Requirements (runtime must support)
-- **Interaction flow (mandatory, must match)**:
-  1. Page shows a "原型标注" entry button (white, document icon) — click to toggle annotation mode
-  2. When annotation mode is ON, page displays **numbered badges on each annotated region** (green circle with number, floating on the region edge, not covering content) — the user sees WHICH region each annotation belongs to
-  3. Click a badge → shows that region's annotation content (popup/panel with source line)
-  4. Clicking a badge also highlights the corresponding region (border/background flash)
-  5. The side panel (if present) lists items; clicking an item locates the region
-- **Initial mode**: `preview` by default — badges hidden until the button is clicked (NOT directly showing annotation content on load)
-- **CRITICAL**: clicking the button must NOT directly show annotation content — it shows the numbered badges first; content appears only after clicking a badge. This is the key difference from a simple popup.
-- **Entry button**: "原型标注" button on the page (white, document icon) — click to open/close annotation mode
-- **Entry buttons are floating & draggable**: the annotation entries ("标注清单" and "原型标注") must NOT occupy layout space or cover page controls — they are floating (fixed position), draggable by mouse (user can move them to a non-blocking spot). Implementation: fixed-position container with drag-to-reposition (pointer events), remember position in sessionStorage, no impact on page layout/flow
-- **Panel**: floating panel (white card, shadow, rounded corners), title "原型标注" + total item count badge + close button, subtitle "点击条目定位页面中的对应区域"
-- **Tabs**: 全部/页面/交互/规则/字段/待确认 — current tab highlighted (brand green), filters items by type
-- **Item cards**: number badge (green circle) + title + type tag + one-line summary + "展开详细说明 (N 项)" expand/collapse
-- **Expanded detail**: structured rules (general behavior / per-item rules), long text with collapse
-- **Locate**: click item → scroll/highlight the corresponding page region (via data-anno anchor)
-- **Style**: white card + shadow + rounded corners + brand green highlight, clean scrollbar
+待确认列表须可滚动（`overflow-y`+max-height），且不在自身 scroll 里重建 DOM。
 
-## Annotation Content Structure Standard (Mandatory)
+### 8.3 拖拽与点击共存
 
-Annotation detail content must be **structured as grouped item lists**, NOT long paragraphs. Format:
+- **禁止**在拖容器上用 `setPointerCapture`（会导致子按钮点不了）。
+- `pointerdown` 在把手，move/up 在 `window`；小位移放行 click，大位移拖动并抑制一次误触。
+- 浮层与按钮 `pointer-events: auto`；`.vpa-root` 为 `pointer-events: none`；工具栏 z-index 高于面板。
+- 验收：点按钮有效；拖动能移；拖后再点仍有效。
 
-### 1. Structure per annotation block
-```
-需求描述：【模块名】              ← title (module name)
-来源：xxx.md#章节                 ← source line (gray code box)
-分组标题 A                        ← behavior group (small heading)
-- 项名1：描述（一句话）          ← item: name + description (one line each)
-- 项名2：描述
-分组标题 B                        ← second group
-- 项名1：描述
-- 项名2：描述
+### 8.4 面板 Tab 状态持久化
+
+滚动触发 `scheduleMeasure` 重建 panel 时，详情 Tab 不得丢。用 `VPA_STATE.detailTabByCard`（`data-annotation-key`）在 DOM 外存 Tab；切换时写入，重建时恢复：
+
+```js
+const cardKey = container.closest('[data-annotation-key]')?.dataset.annotationKey;
+const savedTab = cardKey ? VPA_STATE.detailTabByCard.get(cardKey) : null;
+const requestedTab = savedTab || container.dataset.detailTab || initialTab;
+if (cardKey) VPA_STATE.detailTabByCard.set(cardKey, currentTab);
 ```
 
-### 2. Rules
-- Split content into **behavior groups** (e.g. 页签通用行为 / 状态说明 / 显示样式 / 交互规则), each with a small heading
-- Under each group, write **item lists** as `- 项名：描述` — one rule point per item, concise one-line description
-- Do NOT write long paragraph prose for rules that can be itemized
-- Keep 来源 line at top (gray code box)
-- Long content: items can be further grouped; the panel supports expand/collapse per item group
-- Reference format: title → source → group headings → `- 项名：描述` item lists (see panel UI reference)
+验收：选「页面内容」后滚动仍保持。
 
-## Annotation Detail Tab Standard (Mandatory)
+### 8.5 滚动不得重建可滚动容器
 
-Each annotation block's **detail content** must be organized into **tab pages** (not a single flat body). Tabs:
+滚动时只 `measureBadges()`，**禁止**在 scroll 回调里 `renderAnnotationPanel()`。Panel 重建仅由 Tab 切换、展开、数据刷新触发：
 
-```
-全部             ← combined view of all sections below (default tab)
-页面内容         ← page-level description: page path, layout, what the region displays
-交互说明         ← interaction behavior: click, hover, tab switching, state transitions, expand/collapse
-业务规则         ← business rules: validation, permissions, exceptions, calculation logic
-字段说明         ← field-level details: field labels, defaults, constraints, formats
-待确认           ← unresolved items: source unclear / rules awaiting confirmation
+```js
+window.requestAnimationFrame(() => {
+  VPA_STATE.measureScheduled = false;
+  measureBadges();
+  // never call renderAnnotationPanel() during scroll
+});
 ```
 
-### Rules
-- **Every annotation block detail must have all 6 tabs** — even empty tabs are shown (as an extension placeholder, e.g. "待确认" shows 0 items). Do NOT hide empty tabs.
-- `全部` = combined rendering of all populated tabs (页面内容+交互说明+业务规则+字段说明+待确认)
-- Content under each tab uses the grouped item-list format (`分组标题` + `- 项名：描述`) from Annotation Content Structure Standard
-- Each tab's content must be accurate to the PRD: 交互说明 covers click/state behaviors, 业务规则 covers validation/permissions/exceptions, 字段说明 covers field-level rules
-- Tab filter (`type` classification) remains: page/page-global/interaction/rule/field/pending; `page-global` is grouped in the 页面 tab while retaining its distinct runtime type.
+验收：列表 `scrollTop` 保持；详情横滑 Tab 仍可用。
 
-For the **active review iteration**, maintain one annotation set compiled into the prototype bundle. PRD-side annotation sources are archived per iteration under that iteration's PRD folder; after go-live, clear the prototype bundle (`annotations: []`) per「迭代化标注与上下线」. Do not stack multiple iterations on the prototype. Do not create changelogs or `versions/` unless explicitly requested. Keep a readable `来源` line and valid `sourceRefs` on every block.
+## 9. 只读边界与安全
 
-The page annotation runtime is strictly read-only. Never add annotation editing, drafts, save APIs, or browser-to-Markdown write-back. Annotation content is changed only by editing Markdown files directly or by asking Codex to update them.
+Runtime 只读展示：本地改 md/config；发布走正常 Git/部署；浏览器读 bundle、渲染、导出。
 
-Use this skill for two workflows:
+禁止：`contenteditable`、Markdown 编辑器、draft、`saveEndpoint`、鉴权写 API。Export 是只读交付，不是编辑流。
 
-- Initialization: existing page or prototype has no annotation layer yet.
-- Incremental update: annotation layer already exists and PRD, page code, or annotation content changed.
+协作/云/团队流程与安全边界见 `references/collaboration-deployment.md`。
 
-If the user does not clearly request initialization or update, ask which workflow to run before editing files.
+## 10. Bundled 资源与延伸阅读
 
-## Required Inputs
+**资产与脚本**
 
-Before generating annotations, discover these inputs in the target project:
+- `assets/annotation-kit/runtime.js` / `runtime.css`
+- `assets/annotation-kit/annotation.config.json`、`annotation.schema.json`
+- `assets/annotation-kit/annotation.workspace.json`、`annotation.workspace.schema.json`
+- `scripts/compile_annotations.py`、`check_annotation_assets.py`、`install_annotation_kit.py`
 
-- Existing prototype implementation: static HTML, React/Vite/Next, Vue/Nuxt, plain SPA, or other frontend output.
-- Business PRD files: search for `prd.md`, `PRD.md`, `requirements.md`, `docs/**/*.md`, product docs, or user-specified files.
-- Existing annotation files: search for `annotations/**/*.md`, `**/annotations/**/*.md`, `annotation.config.json`, `annotation.workspace.json`, `annotation-kit`, or prior runtime injection.
-- Available run command: inspect `package.json`, static `index.html`, or documented scripts.
-- Deployment target: determine whether the user needs local-only use, static cloud viewing, cloud collaboration, or Git-reviewed annotation updates.
+**阅读顺序**
 
-Never assume the current demo structure exists in the target project.
-
-## Low-Intrusion Strategy
-
-Choose the least invasive viable integration:
-
-1. Zero-source-change mode: use bookmarklet, extension, or browser-injected runtime when source files cannot be edited.
-2. One-line runtime mode: copy `assets/annotation-kit/` into the project and add one script/link pair to the HTML entry.
-3. Selector-hint mode: add only stable `data-anno` attributes to key UI modules when selectors are unstable.
-4. Component integration mode: use framework code only when the page cannot be reliably annotated from DOM selectors.
-
-Do not rewrite UI components to support annotations. Do not move layout nodes. Do not couple annotation state to business state.
-
-## Annotation Directory Decision
-
-Choose the annotation document directory in this order:
-
-1. Use the directory explicitly specified by the user.
-2. If existing annotation Markdown files are found, keep using that directory.
-3. If a main business PRD is found, create an `annotations/` folder beside that PRD.
-   - Example: `docs/prd.md` -> `docs/annotations/`
-   - Example: `requirements/module/prd.md` -> `requirements/module/annotations/`
-4. If multiple PRDs exist, keep each module's annotation source beside its relevant PRD. Add one `annotation.workspace.json` at their nearest practical common annotation parent to aggregate compilation; do not move all module files into one directory merely to share a runtime.
-5. If no PRD location is discoverable, create `annotations/` at the target project root and state this fallback in the final response.
-
-Never hard-code a global path such as `docs/annotations/` unless that is the directory selected by the above rules.
-
-## History Is Explicit Only
-
-Do not create `changelog.md` or `versions/` by default. The business PRD and requirement documents retain the change history; annotations only explain the current page. If the user explicitly asks for annotation restore points or audit history, keep them inside the selected annotation directory and exclude them from default runtime input.
-
-## Source And Runtime Separation
-
-Treat annotation Markdown files as authoring source and `annotation.bundle.json` as the deployable read-only artifact. Do not require source PRDs or source annotation Markdown to be publicly served.
-
-Use this mapping:
-
-- Each module's `annotation.config.json` stores its `scope`, page, target selector, `markdownFile`, `blockId`, and requirement source references.
-- `annotation.workspace.json` compiles one iteration's config into one bundle; per-iteration workspace `inputs` must list only that iteration's `annotation.config.json` (not the prototype's compiled bundle). Numbering follows「角标编号（routeMatcher 分组）」.
-- The Markdown file stores one or more blocks delimited by `<!-- anno:start id=... -->` and `<!-- anno:end id=... -->`.
-- `scripts/compile_annotations.py` validates the mapping and compiles Markdown blocks into `annotation.bundle.json`.
-- Runtime reads the bundle, renders matching badges/popups, and refreshes the deployed bundle without writing source files.
-
-Use inline `markdown` only for tiny demos or legacy fallback. For real projects, compile external Markdown before browser verification and deployment.
-
-## Read-Only Boundary
-
-The runtime only reads and presents annotations:
-
-- Local changes: the user edits annotation Markdown directly, or Codex updates it in the workspace.
-- Published changes: commit and deploy the changed Markdown through the project's normal release flow.
-- Browser behavior: read the compiled bundle, render badges/popups, refresh content, view all annotations, and download/export.
-
-Never add an edit button, Markdown editor, `contenteditable`, textarea editor, draft storage, `saveEndpoint`, persistence adapter, authentication, or annotation write API to the page runtime. Export is a read-only delivery action, not an editing workflow.
-
-## Mermaid Support
-
-Support Mermaid as optional Markdown enhancement:
-
-- Render fenced blocks written as ```` ```mermaid ````.
-- If `window.mermaid` already exists, reuse it.
-- If `annotation.config.json` provides `mermaid.src`, load that script before rendering diagrams.
-- If Mermaid is unavailable, show the Mermaid source as a readable code block rather than failing the annotation popup.
-- Do not require internet CDN access by default; prefer a local Mermaid asset when projects need offline reliability.
-
-## Workflow A: Initialization
-
-1. Inspect the project type and entry point.
-   - React/Vite/SPA: inspect `package.json`, `src`, and root `index.html`.
-   - Static HTML: inspect each relevant `.html` file.
-   - Built output only: prefer runtime injection or bookmarklet mode.
-2. Read business PRDs and extract all page-relevant logic.
-   - Preserve business rules, field rules, states, roles, exceptions, and flow relations.
-   - Do not summarize away implementation-critical details.
-   - For form pages, separately extract field constraints and page-global handling such as mode entry, save or submit boundaries, validation scope, success return, and unsaved-leave handling.
-   - Do not infer generic component behavior when the PRD does not make it business-specific.
-3. Open or run the page and build a DOM target inventory.
-   - Prefer stable module targets over every small element.
-   - Record target label, selector candidates, visible text, role, page path, and visibility state.
-   - For a modal, drawer, popover, accordion or tab panel, record the action that reveals it and inspect the target after it is visible.
-4. Aggregate requirements by UI module.
-   - One closely related module gets one annotation badge.
-   - Filter bars, table operations, tabs, forms, modals, drawers, field groups, and batch tools are typical modules.
-   - Add one page-global badge when cross-field or cross-region page rules would otherwise be scattered across field groups, such as page access, duplicate-submit protection, unsaved-leave handling, or page-level failure retry; do not add it to a simple display-only page with no sourced page rule.
-5. Write separate annotation Markdown files.
-   - Store them in the selected annotation directory from "Annotation Directory Decision".
-   - Add stable source requirement ids and map them through each annotation's `sourceRefs`.
-   - Add a readable `来源：{PRD文件或章节}` line near the top of every block.
-   - Create or update `changelog.md` only when annotation history is explicitly requested.
-   - Keep business PRD unchanged.
-6. Generate or update each module's `annotation.config.json`.
-   - Assign a stable lowercase kebab-case `scope` and map each annotation id to page path, target selector, module name, `markdownFile`, and `blockId`.
-   - When one deployed runtime covers multiple module configs, add or update a project-level `annotation.workspace.json` instead of manually merging module configs.
-7. Compile and validate the read-only bundle.
-   - Single module: run `scripts/compile_annotations.py <config> --output <public-runtime-dir>/annotation.bundle.json --coverage <annotation-dir>/coverage.md`.
-   - Multiple modules: run the same command with `<workspace>`; workspace output, coverage, and optional `htmlOutput` may be declared in the manifest.
-   - Do not continue with unmapped source requirements, duplicate ids, missing blocks, or missing selectors.
-8. Install runtime with the smallest integration.
-   - Use `scripts/install_annotation_kit.py` when copying bundled runtime assets is appropriate.
-   - Existing project config must be preserved unless the user explicitly requests replacement.
-9. Verify in browser.
-   - Badges are positioned by absolute/fixed overlay, not by changing business layout.
-   - Verify the initial mode matches `runtime.initialMode`; use `"preview"` by default and `"annotate"` only when badges should appear on first load.
-   - Verify hidden modules do not render corner badges before reveal, then open each relevant module and verify its badge appears on the correct visible target.
-   - Popups are clickable, draggable, resizable, read-only, and isolated from page events.
-   - Markdown renders headings, lists, blockquotes, emphasis, inline code, and tables.
-   - Initial mode is visibly `preview`; switching mode shows a toast.
-   - Runtime refresh performs a no-cache bundle read, updates open popups, and removes deleted annotations without reloading the business page.
-
-## Workflow B: Incremental Update
-
-1. Compare current PRD/page/annotation files.
-2. Classify changes as added, modified, deleted, or moved.
-3. Update only affected annotation Markdown blocks and selector mappings.
-   - Keep field-group blocks concise but preserve PRD-defined requiredness, editable conditions, defaults, range, length, precision, format, uniqueness, and validation timing.
-   - Keep save, submit, return, mode, and dirty-form handling in the page-global block when one exists instead of repeating them in every field block.
-   - Refresh each affected block's readable `来源` line and its configured `sourceRefs` against the current PRD.
-4. Keep runtime styles, badge shape, offsets, and popup behavior unchanged unless the user explicitly asks for visual changes.
-5. Remove stale badges only when their target module or requirement is truly removed.
-6. Preserve supplemental annotation ids.
-7. Recompile the owning module config or project workspace, then regenerate the bundle, coverage matrix, and configured HTML output before browser verification.
-
-## Identifier Rules
-
-Use stable ids rather than implying priority:
-
-- Auto-generated initial annotations: `1`, `2`, `3`.
-- Supplemental annotations: `A1`, `A2`, `A3`.
-- Nested additions under a known module: `1a`, `1b` only when the user wants explicit relationship to an existing module.
-
-Display ids are unique within each `routeMatcher` group (see「角标编号」). The compiler creates the runtime key as `scope:id` for exports. Different URL pages may both use display id `1` in different groups; the same group must not reuse ids.
-
-When exporting all annotations, sort by page order first, then DOM order, then id.
-
-## Selector Rules
-
-Use selector priority:
-
-1. Existing `data-anno`
-2. Existing stable `data-testid`, `id`, `aria-label`, `name`, `role`
-3. Stable semantic selector plus visible text fingerprint
-4. Stable class selector
-5. Generated CSS path as a temporary fallback
-
-If no selector is stable, add one `data-anno` to the module root. Keep the attribute descriptive, such as `data-anno="module-filter-bar"`.
-
-Read `references/integration-patterns.md` before modifying a new project type. Read `references/annotation-authoring.md` before generating or updating annotation content. Read `references/collaboration-deployment.md` before implementing local/cloud collaboration.
-
-## Bundled Resources
-
-- `assets/annotation-kit/runtime.js`: framework-neutral annotation overlay runtime.
-- `assets/annotation-kit/runtime.css`: annotation badge, popup, and Markdown rendering styles.
-- `assets/annotation-kit/annotation.config.json`: config template.
-- `assets/annotation-kit/annotation.schema.json`: config schema.
-- `assets/annotation-kit/annotation.workspace.json`: multi-module compilation manifest template.
-- `assets/annotation-kit/annotation.workspace.schema.json`: workspace manifest schema.
-- `references/annotation-scope.md`: boundary decisions for what to annotate and what to leave to the prototype.
-- `scripts/compile_annotations.py`: validates source coverage and compiles a deployable read-only bundle.
-- `scripts/install_annotation_kit.py`: copies runtime assets into a target project and can inject script/link tags into HTML entries.
-- `scripts/check_annotation_assets.py`: validates a compiled annotation-kit dir (bundle completeness, per-page unique ids, compiled-in markdown, target selectors, coverage) — no network/third-party deps.
-
-## Tooling Verification (deliverable gate)
-
-Working toolchain is NOT the deliverable; visible badges and correct panel behavior are. Every delivery must show real evidence for:
-
-1. **Scope judgement** — apply `references/annotation-scope.md`; output "N to annotate / M not, with reasons".
-2. **发版前三道命令** — full compile → `check_annotation_assets.py` with `--src` and `--routes` → `npm run build`; paste REAL outputs (all green).
-3. **Browser run** — open the page, confirm badges, `scopeLabel`,「需操作后查看」where expected, click → content, no JS errors.
-
-Annotation source stays PRD Markdown per iteration; field facts from TSV, business rules from PRD. Passing compile alone does not conclude the task.
-
-## 四层校验走查
-
-每次 v2 交付都按四层检查并记录证据：
-
-1. **来源层**：标注内容可追溯到 PRD、字段清单或明确的评审记录，不带入其他项目的事实。
-2. **结构层**：同一 routeMatcher 分组（无 matcher 时按 page）的 block id 连续唯一，宿主页 1..n、同屏弹窗/抽屉 n+1..m；区域级/`page-global` 类型正确，字段表格列完整，`sourceRefs` 覆盖 source requirements。
-3. **资产层**：编译产物内联 Markdown，target 结构完整，页面内 id 不重复，coverage 无未映射项；表格表头和数据行计入数量，分隔行不计入。
-4. **运行层**：浏览器中确认 route、徽章、面板、六个详情 Tab、表格渲染、定位、滚动和只读边界；记录 JS 控制台无错误。
-
-## Validation Checklist
-
-Before final response, verify:
-
-- The selected workflow was initialization or update.
-- Business PRD was not polluted with page annotation content.
-- Annotation Markdown is separate and complete enough for developers.
-- Runtime annotations represent the current prototype only; every block has a readable source line and valid `sourceRefs`.
-- Form pages with cross-field processing have one page-global annotation; field-group annotations preserve the PRD-defined core constraints without expanding generic component conventions.
-- Every declared source requirement maps to at least one annotation, or the user explicitly accepted an unmapped item.
-- Compiled bundle contains no source PRD content outside mapped annotation blocks.
-- Same module does not receive redundant badges.
-- Runtime injection is minimal for the project type.
-- Multiple modules sharing one runtime compile through a workspace manifest; no hand-merged config is required.
-- Badges do not alter layout.
-- Popup placement leaves the badge column clickable, and `runtime.zIndexBase` resolves host stacking conflicts without changing host styles.
-- Popups support click-to-open, close button, drag, resize, read-only export, and event isolation.
-- Runtime contains no edit controls, browser drafts, save endpoint, or write-back path.
-- Runtime refresh re-reads the deployed bundle and reconciles existing badges and open popups.
-- Configured `page` is a real route; `routeMatcher` covers equivalent paths; no fake `/modal` sub-routes; ids unique within each routeMatcher group; for static one-page prototypes, use `page: "*"`.
-- Optional standalone HTML output contains rendered Markdown rather than raw source text.
-- Markdown preview renders tables, nested ordered/unordered lists, task lists, headings, blockquotes, links, emphasis, and inline code.
-- Build or browser verification ran, or the reason it could not run is stated.
+1. `references/annotation-authoring.md` — 写标注与 md/config 细节  
+2. `references/annotation-scope.md` — 标不标  
+3. `references/integration-patterns.md` — 各技术栈接入  
+4. `references/collaboration-deployment.md` — 部署与协作  
