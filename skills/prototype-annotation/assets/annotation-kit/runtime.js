@@ -207,7 +207,7 @@ function countMarkdownItems(markdown) {
   let listItems = 0, tableRows = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    if (/^\s*(?:[-+*]|\d+\.)\s+/.test(line)) listItems++;
+    if (/^\s*(?:[-+*]|\d+[.)、])\s+/.test(line)) listItems++;
     else if (isBar(line)) {
       if (isTableSeparator(lines[i + 1] || '')) {
         i++;
