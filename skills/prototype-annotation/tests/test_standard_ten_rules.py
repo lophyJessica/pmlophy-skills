@@ -90,7 +90,7 @@ class TenRulesTests(unittest.TestCase):
     def test_rule2_bad_route(self):
         (self.src / "page.tsx").write_text("data-anno='record-list'", encoding="utf-8")
         msg = self.check_raises(base_annotation(page="/missing"))
-        self.assertIn("[判据2]", msg)
+        self.assertIn("[判据2-page]", msg)
 
     def test_rule3_duplicate_id(self):
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
@@ -110,14 +110,25 @@ class TenRulesTests(unittest.TestCase):
         self._routes_with_catchall()
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
         msg = self.check_raises(base_annotation(page="/zzz/nope"))
-        self.assertIn("[判据2]", msg)
+        self.assertIn("[判据2-page]", msg)
         self.assertIn("不在真实路由表", msg)
+
+    def test_rule2_fake_page_valid_matcher_only_page_error(self):
+        self._routes_with_catchall()
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        msg = self.check_raises(
+            base_annotation(page="/zzz/nope", routeMatcher="engage/create"),
+            prd_pages=["/zzz/nope"],
+        )
+        self.assertIn("[判据2-page]", msg)
+        self.assertIn("不在真实路由表", msg)
+        self.assertNotIn("未命中任何真实路由", msg)
 
     def test_rule2_bogus_route_matcher(self):
         self._routes_with_catchall()
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
         msg = self.check_raises(base_annotation(routeMatcher="does-not-exist"))
-        self.assertIn("[判据2]", msg)
+        self.assertIn("[判据2-matcher]", msg)
         self.assertIn("未命中任何真实路由", msg)
 
     def test_rule2_narrow_route_matcher(self):
@@ -129,7 +140,7 @@ class TenRulesTests(unittest.TestCase):
                 routeMatcher="engage/create",
             )
         )
-        self.assertIn("[判据2]", msg)
+        self.assertIn("[判据2-matcher]", msg)
         self.assertIn("未覆盖本块 page", msg)
 
     def test_rule2_fake_page_and_matcher_both_wrong(self):

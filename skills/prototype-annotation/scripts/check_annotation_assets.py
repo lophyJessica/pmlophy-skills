@@ -103,7 +103,7 @@ def route_matches(route_path: str, candidate: str) -> bool:
 def format_grouped_errors(errors: list[str], limit_per_group: int = 8) -> str:
     groups: dict[str, list[str]] = {}
     for message in errors:
-        match = re.match(r'\[判据(\d+)\]', message)
+        match = re.match(r'\[判据(\d+)(?:-(?:page|matcher))?\]', message)
         key = match.group(1) if match else '0'
         groups.setdefault(key, []).append(message)
     lines: list[str] = []
@@ -127,40 +127,62 @@ def route_matcher_hits_route_table(pattern: re.Pattern[str], meaningful: list[st
     return any(pattern.search(path) for path in meaningful)
 
 
+def page_matches_meaningful_route(page: str, meaningful: list[str]) -> bool:
+    if any(route_matches(path, page) for path in meaningful):
+        return True
+    for path in meaningful:
+        if ':' not in path:
+            continue
+        route_re = '^' + re.sub(r':[^/]+', r'[^/]+', path) + '$'
+        if re.match(route_re, page):
+            return True
+    return False
+
+
+def route_matcher_plausible(
+    pattern: re.Pattern[str],
+    meaningful: list[str],
+    page: str,
+    page_valid: bool,
+) -> bool:
+    """判据 2-matcher：命中路由表，或在 page 已合法时由 matcher 覆盖该 page（如 /tools/* 子路径）。"""
+    if route_matcher_hits_route_table(pattern, meaningful):
+        return True
+    if page_valid and page and page != '*' and pattern.search(page):
+        return True
+    return False
+
+
 def validate_page_on_routes(
     page: str,
     label: str,
     meaningful: list[str],
     renderable_paths: list[str],
     redirect_paths: list[str],
-) -> tuple[list[str], list[str], bool]:
-    """校验 page 是否在真实路由表。返回 (errors, warnings, page_route_ok)。
-
-    page_route_ok：page 已落在真实路由（含仅 warning 的前缀通配/参数路由），
-    才允许用 pattern.search(page) 辅助判断 routeMatcher 是否有效；不得用假 page 给 matcher 洗白。
-    """
+) -> tuple[list[str], list[str]]:
+    """校验 page 是否在真实路由表（判据 2-page）。与 routeMatcher 判定独立，互不为对方洗白。"""
     errors: list[str] = []
     warnings: list[str] = []
     if page == '*':
-        return errors, warnings, True
-    if any(route_matches(path, page) for path in meaningful):
-        return errors, warnings, True
+        return errors, warnings
+    if page_matches_meaningful_route(page, meaningful):
+        return errors, warnings
     if redirect_paths and any(route_matches(path, page) for path in redirect_paths):
-        errors.append(f'[判据2] {label} page 为重定向路由，页面不会渲染')
-        return errors, warnings, False
+        errors.append(f'[判据2-page] {label} page 为重定向路由，页面不会渲染')
+        return errors, warnings
     if ':' in page:
         prefix = page.split(':', 1)[0]
         if any(p.startswith(prefix) for p in meaningful):
             warnings.append(f'{label} page {page} 为参数路由，建议写 routeMatcher 明确覆盖')
-            return errors, warnings, True
+            return errors, warnings
     if any(
         not is_catchall_route(path) and path.endswith('/*') and page.startswith(path[:-1])
         for path in renderable_paths
     ):
         warnings.append(f'{label} page {page} 由前缀通配路由覆盖，建议写 routeMatcher 明确范围')
-        return errors, warnings, True
-    errors.append(f'[判据2] {label} page 不在真实路由表（已排除 *、/* 兜底）')
-    return errors, warnings, False
+        return errors, warnings
+    errors.append(f'[判据2-page] {label} page 不在真实路由表（已排除 *、/* 兜底）')
+    return errors, warnings
 
 
 def check_routes(annots: list[dict], renderable_paths: list[str], redirect_paths: list[str]) -> tuple[list[str], list[str]]:
@@ -172,42 +194,33 @@ def check_routes(annots: list[dict], renderable_paths: list[str], redirect_paths
         matcher = str(a.get('routeMatcher') or '').strip()
         label = block_label(a)
         if page in redirect_paths:
-            errors.append(f'[判据2] {label} page 为重定向路由，页面不会渲染')
+            errors.append(f'[判据2-page] {label} page 为重定向路由，页面不会渲染')
             continue
+        page_valid = True
+        if page and page != '*':
+            page_errs, page_warns = validate_page_on_routes(
+                page, label, meaningful, renderable_paths, redirect_paths
+            )
+            page_valid = not page_errs
+            errors.extend(page_errs)
+            warnings.extend(page_warns)
         if matcher:
             try:
                 pattern = re.compile(matcher)
             except re.error:
-                errors.append(f'[判据2] {label} routeMatcher 非法正则: /{matcher}/')
+                errors.append(f'[判据2-matcher] {label} routeMatcher 非法正则: /{matcher}/')
                 continue
-            page_errs, page_warns, page_route_ok = validate_page_on_routes(
-                page, label, meaningful, renderable_paths, redirect_paths
-            )
-            errors.extend(page_errs)
-            warnings.extend(page_warns)
-            hits_table = route_matcher_hits_route_table(pattern, meaningful)
-            hits_page = (
-                page_route_ok
-                and page
-                and page != '*'
-                and pattern.search(page)
-            )
-            if not hits_table and not hits_page:
+            if not route_matcher_plausible(pattern, meaningful, page, page_valid):
                 errors.append(
-                    f'[判据2] {label} routeMatcher /{matcher}/ 未命中任何真实路由（已排除 *、/* 兜底）'
+                    f'[判据2-matcher] {label} routeMatcher /{matcher}/ 未命中任何真实路由（已排除 *、/* 兜底）'
                 )
             if page and page != '*' and not pattern.search(page):
                 errors.append(
-                    f'[判据2] {label} routeMatcher 未覆盖本块 page（过窄，例如只匹配 create 漏 edit/）'
+                    f'[判据2-matcher] {label} routeMatcher 未覆盖本块 page（过窄，例如只匹配 create 漏 edit/）'
                 )
             continue
         if page == '*':
             continue
-        page_errs, page_warns, _ = validate_page_on_routes(
-            page, label, meaningful, renderable_paths, redirect_paths
-        )
-        errors.extend(page_errs)
-        warnings.extend(page_warns)
     return errors, warnings
 
 
