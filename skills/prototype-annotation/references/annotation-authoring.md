@@ -1,23 +1,23 @@
-# Annotation Authoring
+# 标注编写
 
-## Source Separation
+## 源文档分离
 
-Keep these documents separate:
+以下文档须分开维护：
 
-- Business PRD: source-of-truth business requirements.
-- Page annotation Markdown: developer-facing page instructions derived from PRD and UI.
+- 业务 PRD：业务需求的权威来源。
+- 页面标注 Markdown：面向研发的页面说明，由 PRD 与界面推导而来。
 
-Never write generated annotation ids into the business PRD unless the user explicitly asks.
+除非用户明确要求，不要将生成的标注 id 写入业务 PRD。
 
-## Iteration-Scoped Annotations (Not CMS Full Inventory)
+## 迭代范围标注（非 CMS 全量资产）
 
 规则见 SKILL.md §2.4，本节只保留编写提醒：每块须有可读 `来源` 行及 config 中匹配的 `sourceRefs`。
 
-## Annotation Directory
+## 标注目录
 
 目录选择与 `annotation.workspace.json` 输入规则见 SKILL.md §3.2；本节只保留多 PRD 示例路径与推荐目录结构。
 
-Examples:
+示例：
 
 ```txt
 docs/prd.md
@@ -30,9 +30,9 @@ prd/record-list.md
 prd/annotations/record-list.md
 ```
 
-Use this selected directory for page Markdown, source mappings, and optional coverage output.
+将页面 Markdown、来源映射及可选 coverage 产出放在上述选定目录中。
 
-Recommended minimal structure:
+推荐最小结构：
 
 ```txt
 annotations/
@@ -42,75 +42,75 @@ annotations/
     record-create.md
 ```
 
-## Extraction Checklist
+## 抽取清单
 
-When reading PRDs, extract:
+阅读 PRD 时须抽取：
 
-- Page purpose and business object.
-- User roles and permissions.
-- Field definitions, requiredness, editable conditions, validation, default values, uniqueness, computed values, and PRD-defined length, range, format, or precision.
-- States, status colors, business-specific disabled states, and error states.
-- Click behavior, navigation, modal/drawer behavior, and confirmation behavior.
-- Table columns, sorting, filtering, pagination, batch actions, and row operations.
-- Cross-page flow, save/cancel rules, dirty-form warnings, and return behavior.
-- Exception flows: failed requests, permission loss, duplicate submissions, missing data.
-- Integration notes: APIs, idempotency, import/export, audit logs, and downstream references.
-- Visibility states: whether the target is initially visible or appears only after opening a modal, drawer, popover, accordion, tab panel, or route.
+- 页面目的与业务对象。
+- 用户角色与权限。
+- 字段定义、必填性、可编辑条件、校验、默认值、唯一性、计算值，以及 PRD 约定的长度、范围、格式或精度。
+- 状态、状态色、业务相关的禁用态与错误态。
+- 点击行为、导航、弹窗/抽屉行为与确认行为。
+- 表格列、排序、筛选、分页、批量操作与行操作。
+- 跨页流程、保存/取消规则、脏表单提示与返回行为。
+- 异常流程：请求失败、权限丢失、重复提交、数据缺失。
+- 集成说明：API、幂等、导入/导出、审计日志与下游引用。
+- 可见性：目标初始是否可见，或是否须在打开 modal、drawer、popover、手风琴、页签面板或路由后才出现。
 
-## Page Layer vs State Layer
+## 页面层与状态层
 
 规则见 SKILL.md §2.2–§2.3，本节不重复页面/状态路由与角标编号。
 
-## Aggregation Rules
+## 聚合规则
 
-Aggregate by what a developer would implement together:
+按研发会一并实现的范围聚合：
 
-- Page shell and page-level rules: one badge on page header or root container only when mode entry, save or submit boundaries, dirty-form handling, or cross-field processing would otherwise be scattered across child modules.
-- Filter area: one badge for all inputs, reset, query, and default behavior.
-- Table: one badge for columns, row operations, status display, sorting, and empty/error states.
-- Tabs: one badge for all tab switching and tab-specific loading rules.
-- Form section: one badge per coherent field group, not per field unless a field has complex standalone rules.
-- Modal/drawer: one badge on modal header or container.
-- Button-only annotation: allowed only when the button has unique flow, permission, or side effects.
+- 页面壳与页面级规则：仅当模式准入、保存/提交边界、脏表单处理或跨字段逻辑否则会散落子模块时，在页头或根容器挂一个角标。
+- 筛选区：所有输入、重置、查询与默认行为共用一个角标。
+- 表格：列、行操作、状态展示、排序及空态/错误态共用一个角标。
+- 页签：所有页签切换及页签内加载规则共用一个角标。
+- 表单区：每个连贯字段组一个角标；除非单字段规则复杂且独立，不按字段拆角标。
+- 弹窗/抽屉：在弹窗标题或容器上挂一个角标。
+- 仅按钮标注：仅当该按钮有独立流程、权限或副作用时允许。
 
-Avoid duplicate badges on a parent and child when the child logic is already fully covered by the parent annotation.
+子级逻辑已被父级标注块完全覆盖时，不要在父、子各挂重复角标。
 
-## Field-First Content Profile
+## 字段优先内容写法
 
-Use this profile for form and query annotations unless the user explicitly asks for a more detailed implementation specification.
+除非用户明确要求更细的实现规格，表单与查询类标注采用本写法。
 
-### Field groups
+### 字段组
 
-Use a compact table with only PRD-confirmed columns that matter to implementation:
+用紧凑表格，只列 PRD 已确认且影响实现的列：
 
 | 字段 | 必填/可编辑 | 核心约束 |
 | --- | --- | --- |
 | 数量 | 必填；审核后只读 | 正整数，按当前项目字段清单定义范围 |
 | 单价 | 必填；审核后只读 | 大于等于0，按当前项目字段清单定义精度 |
 
-- Include `默认值` only when the PRD defines one.
-- Include validation timing and error copy only when the PRD defines them or they materially change the handling path.
-- Do not turn the table into a full component API: omit ordinary placeholder, visual style, keyboard, loading, and clearable behavior unless it changes business outcomes.
-- Never fill a missing constraint from general frontend experience. Mark a source conflict or missing rule as supplemental `A*` only when it affects implementation or acceptance.
+- 仅当 PRD 定义了 `默认值` 时才写入。
+- 仅当 PRD 定义了校验时机与错误文案，或它们会实质改变处理路径时，才写入。
+- 不要把表格写成完整组件 API：占位、视觉、键盘、加载、可清空等常规行为除非影响业务结果，否则省略。
+- 不要用通用前端经验填补缺失约束。仅当影响实现或验收时，将来源冲突或缺失规则标为补充 `A*`。
 
-### Page-global rules
+### 整页规则（page-global）
 
-Add one page-global block only for forms or workflows with cross-field handling. Keep it to four short sections as applicable:
+仅对存在跨字段处理的表单或流程增加一个 page-global 标注块。视情况保留四段短说明：
 
 1. `页面模式`：新增/编辑准入、默认状态、字段锁定。
 2. `提交边界`：保存草稿与提交的校验范围和阻断条件。
 3. `结果处理`：成功后的停留页、跳转、刷新和反馈。
 4. `离开处理`：未保存改动、取消或返回的规则。
 
-Do not repeat these rules in every field-group block. Ordinary read-only pages and simple lists do not need a page-global badge.
+不要在每个字段组块中重复上述规则。普通只读页与简单列表不需要 page-global 角标。
 
-### Component behavior
+### 组件行为
 
-Treat established design-system behavior as implicit. Annotate a component only when its behavior carries business meaning, such as a status-gated action, a date range that changes query semantics, a confirmation that blocks a state transition, or a business-specific selector source.
+已确立的设计系统行为视为默认，不必赘述。仅当行为承载业务含义时才标注组件，例如状态门控操作、改变查询语义的日期范围、阻断状态迁移的确认、或业务特定的选择器数据源。
 
-## Markdown Block Shape
+## Markdown 标注块结构
 
-Use this structure unless the target project already has a stronger convention:
+除非目标项目已有更强约定，采用下列结构：
 
 ```md
 <!-- anno:start id=1 page=/records target=module-table -->
@@ -140,7 +140,7 @@ Use this structure unless the target project already has a stronger convention:
 <!-- anno:end id=1 -->
 ```
 
-Declare stable source requirements in `annotation.config.json`, then map each annotation using `sourceRefs`:
+在 `annotation.config.json` 中声明稳定的 sourceRequirements，并通过 `sourceRefs` 映射每条标注：
 
 ```json
 {
@@ -153,22 +153,22 @@ Declare stable source requirements in `annotation.config.json`, then map each an
 }
 ```
 
-The compiler must fail on duplicate annotation ids, missing Markdown blocks, unknown source references, and unmapped declared requirements. Use `--allow-unmapped` only when the user explicitly accepts incomplete coverage.
+编译器在重复标注 id、缺失 Markdown 块、未知来源引用或未映射的声明需求时必须失败。仅当用户明确接受不完整覆盖时，才使用 `--allow-unmapped`。
 
-Keep PRD details that affect implementation. Do not compress them into vague prose.
+保留影响实现的 PRD 细节，不要压缩成模糊概述。
 
-## Mermaid Usage
+## Mermaid 用法
 
-Use Mermaid only when it improves developer understanding:
+仅在有助于研发理解时使用 Mermaid：
 
-- Cross-page flows: `flowchart`.
-- Status transitions: `stateDiagram-v2`.
-- Role/process swimlane-like logic: use simple flowcharts with role labels.
-- Data relationships: `erDiagram` only when the relationship is important for implementation.
+- 跨页流程：`flowchart`。
+- 状态迁移：`stateDiagram-v2`。
+- 角色/流程类逻辑：用带角色标签的简单流程图。
+- 数据关系：仅当关系对实现重要时使用 `erDiagram`。
 
-Prefer tables and lists for field rules, validation, permissions, and exception messages.
+字段规则、校验、权限与异常文案优先用表格与列表。
 
-Example:
+示例：
 
 ````md
 ```mermaid
@@ -180,13 +180,13 @@ flowchart TD
 ```
 ````
 
-## Runtime Rendering Rules
+## 运行时渲染规则
 
-Annotation Markdown is the authoring source of truth. Compile one module config or a multi-module workspace into `annotation.bundle.json`; the read-only runtime loads that bundle and renders the matching block in the popup.
+标注 Markdown 是编写期的权威来源。将单模块 config 或多模块工作区编译为 `annotation.bundle.json`；只读运行时加载该 bundle，在弹层中渲染对应标注块。
 
 `page` / `routeMatcher` / 角标 id 规则见 SKILL.md §2.2–§2.3；发版门禁见 §7.1。
 
-Config mapping:
+配置映射：
 
 ```json
 {
@@ -201,23 +201,23 @@ Config mapping:
 }
 ```
 
-Parsing rules:
+解析规则：
 
-- Preferred block delimiter: `<!-- anno:start id=1 ... -->` to `<!-- anno:end id=1 -->`.
-- Legacy fallback: `<!-- anno:id=1 ... -->` until the next `anno:id` or `anno:start` marker.
-- `blockId` defaults to the annotation `id`.
-- One Markdown file may contain many annotation blocks.
-- Page popup content must render the extracted block, not the whole file.
-- Markdown changes become visible after recompiling the bundle and refreshing or reloading the page.
+- 首选块分隔：`<!-- anno:start id=1 ... -->` 至 `<!-- anno:end id=1 -->`。
+- 遗留回退：`<!-- anno:id=1 ... -->` 直至下一个 `anno:id` 或 `anno:start` 标记。
+- `blockId` 默认等于标注 `id`。
+- 一个 Markdown 文件可含多个标注块。
+- 页面弹层须渲染抽取出的块，而非整文件。
+- 修改 Markdown 后须重新编译 bundle 并刷新或重载页面才可见。
 
-## Supplemental Annotation Rules
+## 补充标注规则
 
-Supplemental annotations are first-class fragments created in Markdown or by Codex:
+补充标注是由 Markdown 或 Codex 创建的一等片段：
 
-- Assign ids `A1`, `A2`, `A3`.
-- Store them in the same annotation Markdown system.
-- Include target selector and page metadata in the HTML comment.
-- Export together with auto-generated annotations.
+- 分配 id `A1`、`A2`、`A3`。
+- 存放在同一套标注 Markdown 体系中。
+- 在 HTML 注释中包含 target 选择器与 page 元数据。
+- 与自动生成的标注一并导出。
 
 ## 历史快照（仅用户明确要求时）
 
