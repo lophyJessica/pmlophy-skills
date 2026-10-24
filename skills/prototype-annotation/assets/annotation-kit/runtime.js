@@ -196,13 +196,25 @@ function parseAnnotationTabs(markdown) {
 function countMarkdownItems(markdown) {
   const source = String(markdown || '');
   const lines = source.split('\n');
-  const isSep = (line) => /^\s*\|(?:[ \t]*:?-{3,}:?[ \t]*\|)+\s*$/.test(line);
-  const isBar = (line) => /^\s*\|/.test(line) && !isSep(line);
+  const isTableSeparator = (line) => {
+    const cells = String(line || '').trim().split('|');
+    return cells.length > 2
+      && cells[0] === ''
+      && cells[cells.length - 1] === ''
+      && cells.slice(1, -1).every((cell) => /^:?-{3,}:?$/.test(cell.trim()));
+  };
+  const isBar = (line) => /^\s*\|/.test(line) && !isTableSeparator(line);
   let listItems = 0, tableRows = 0;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     if (/^\s*(?:[-+*]|\d+\.)\s+/.test(line)) listItems++;
-    else if (isBar(line) && !isSep(lines[i + 1] || '')) tableRows++;
+    else if (isBar(line)) {
+      if (isTableSeparator(lines[i + 1] || '')) {
+        i++;
+        continue;
+      }
+      tableRows++;
+    }
   }
   return listItems + tableRows;
 }
@@ -210,7 +222,7 @@ function countMarkdownItems(markdown) {
 function detailTabMarkdown(sections, key) {
   if (key !== 'all') return sections[key].join('\n').replace(/^\s+|\s+$/g, '');
   const chunks = [];
-  VPA_DETAIL_TABS.filter((tab) => tab.key !== 'all').forEach((tab) => {
+  VPA_DETAIL_TABS.filter((tab) => tab.key !== 'all' && tab.key !== 'pending').forEach((tab) => {
     if (countMarkdownItems(sections[tab.key].join('\n'))) {
       chunks.push('### ' + tab.label);
       chunks.push(sections[tab.key].join('\n').replace(/^\s+|\s+$/g, ''));
@@ -219,9 +231,9 @@ function detailTabMarkdown(sections, key) {
   return chunks.join('\n\n');
 }
 
-function setTabbedMarkdownContent(container, markdown, initialTab = 'all') {
+function setTabbedMarkdownContent(container, markdown, initialTab = 'all', blockKey = null) {
   const sections = parseAnnotationTabs(markdown);
-  const cardKey = container.closest('[data-annotation-key]')?.dataset.annotationKey;
+  const cardKey = blockKey || container.closest('[data-annotation-key]')?.dataset.annotationKey;
   const counts = {
     all: Object.values(sections).reduce((total, section) => total + countMarkdownItems(section.join('\n')), 0),
     page: countMarkdownItems(sections.page.join('\n')),
@@ -676,9 +688,10 @@ function annotationDetailMarkdown(markdown) {
   }).join('\n').replace(/^\s+|\s+$/g, '');
 }
 
-function setPopupContent(container, annotation) {
-  const wasOpen = Boolean(container.querySelector('.vpa-popup-details.is-open'));
-  const previousTab = container.querySelector('.vpa-popup-details')?.dataset.detailTab || 'all';
+function setPopupContent(container, annotation, blockKey = null) {
+  const existingDetails = container.querySelector('.vpa-popup-details');
+  const wasOpen = existingDetails ? existingDetails.classList.contains('is-open') : true;
+  const previousTab = existingDetails?.dataset.detailTab || 'all';
   const markdown = getAnnotationMarkdown(annotation);
   const source = annotationSourceMarkdown(markdown);
   container.innerHTML = '';
@@ -704,7 +717,7 @@ function setPopupContent(container, annotation) {
     details.classList.toggle('is-open', open);
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     toggle.innerHTML = (open ? '收起详细说明' : '展开详细说明 (' + annotationDetailCount(annotation) + '项)') + ' <span aria-hidden="true">' + (open ? '⌃' : '⌄') + '</span>';
-    if (open) setTabbedMarkdownContent(details, markdown, previousTab);
+    if (open) setTabbedMarkdownContent(details, markdown, previousTab, blockKey);
     else details.innerHTML = '';
   };
   toggle.addEventListener('click', (event) => {
@@ -826,6 +839,14 @@ function isVisibleTarget(target, rect) {
   return style.display !== 'none' && style.visibility !== 'hidden';
 }
 
+// 可挂载判断：只要求元素真实存在且可见，不因超出视口而丢弃（角标坐标会被夹进视口）。
+// 否则页面横向溢出时，右侧元素的角标会整块消失。
+function isAttachableTarget(target, rect) {
+  if (!target.isConnected || !rect.width || !rect.height) return false;
+  const style = window.getComputedStyle(target);
+  return style.display !== 'none' && style.visibility !== 'hidden';
+}
+
 function ensureRoot() {
   let root = document.querySelector('.vpa-root');
   if (!root) {
@@ -887,7 +908,7 @@ function measureBadges() {
       target = findTarget(annotation);
       if (!target) continue;
       rect = target.getBoundingClientRect();
-      if (!isVisibleTarget(target, rect)) continue;
+      if (!isAttachableTarget(target, rect)) continue;
     }
 
     const key = annotationKey(annotation);
@@ -1025,7 +1046,10 @@ async function openPopup(annotation) {
 
   const body = document.createElement('div');
   body.className = 'vpa-popup-body';
-  setPopupContent(body, annotation);
+  setPopupContent(body, annotation, key);
+  body.querySelectorAll('.vpa-tab-content').forEach((tabContent) => {
+    tabContent.style.display = 'block';
+  });
   popup.appendChild(body);
 
   header.querySelector('.vpa-close').addEventListener('click', (event) => {
@@ -1152,6 +1176,11 @@ function locateAnnotation(annotation) {
   highlightTarget(target);
 }
 
+function annotationTargetExists(annotation) {
+  if (annotation.type === 'page-global' || (!annotation.target?.selector && !annotation.target?.fallbackSelectors?.length)) return true;
+  return Boolean(findTarget(annotation));
+}
+
 function renderPanelCards(panel) {
   const list = panel.querySelector('.vpa-panel-list');
   if (!list) return;
@@ -1164,11 +1193,13 @@ function renderPanelCards(panel) {
   list.innerHTML = filtered.map((annotation, index) => {
     const key = annotationKey(annotation);
     const expanded = VPA_STATE.expandedCards.has(key);
-    return `<article class="vpa-card${expanded ? ' is-expanded' : ''}" data-annotation-key="${escapeHtml(key)}">
+    const scopeTag = annotation.scopeLabel ? `<span class="vpa-scope-tag">${escapeHtml(annotation.scopeLabel)}</span>` : '';
+    const reachTag = annotationTargetExists(annotation) ? '' : '<span class="vpa-reach-tag">需操作后查看</span>';
+    return `<article class="vpa-card${expanded ? ' is-expanded' : ''}${annotationTargetExists(annotation) ? '' : ' is-unreachable'}" data-annotation-key="${escapeHtml(key)}">
       <button type="button" class="vpa-card-main" data-vpa-locate aria-label="定位到${escapeHtml(annotation.moduleName || annotation.id)}">
         <span class="vpa-card-number">${escapeHtml(annotation.id || index + 1)}</span>
         <span class="vpa-card-copy">
-          <span class="vpa-card-heading"><strong>${escapeHtml(annotation.moduleName || annotation.title || annotation.id)}</strong><span class="vpa-type-tag vpa-type-${escapeHtml(annotationType(annotation))}">${escapeHtml(annotationTypeLabel(annotation))}</span></span>
+          <span class="vpa-card-heading"><strong>${escapeHtml(annotation.moduleName || annotation.title || annotation.id)}</strong>${scopeTag}<span class="vpa-type-tag vpa-type-${escapeHtml(annotationType(annotation))}">${escapeHtml(annotationTypeLabel(annotation))}</span>${reachTag}</span>
           <span class="vpa-card-summary">${escapeHtml(annotationSummary(annotation))}</span>
         </span>
         <span class="vpa-card-chevron" aria-hidden="true">›</span>
@@ -1255,6 +1286,7 @@ function renderAnnotationPanel() {
 
 function openAnnotationPanel() {
   VPA_STATE.panelOpen = true;
+  VPA_STATE.expandedCards.clear();
   renderAnnotationPanel();
   syncAnnotationControls();
 }
