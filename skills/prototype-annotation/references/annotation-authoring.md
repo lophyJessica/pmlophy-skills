@@ -9,11 +9,15 @@ Keep these documents separate:
 
 Never write generated annotation ids into the business PRD unless the user explicitly asks.
 
-## Current-Only Default
+## Iteration-Scoped Annotations (Not CMS Full Inventory)
 
-Maintain one current set of annotation Markdown files for the current prototype. Update blocks in place and let the runtime display only this current set. Do not create a changelog, version folder, or historical annotation copies unless the user explicitly asks for restoration or audit history. Requirement PRDs retain the business change history.
+One product iteration = one PRD kit = one `annotations/` tree under that kit (for example `03-产品设计/私域2.0一期/04-评审PRD/annotations/`). Annotations exist for **review during that iteration**; after go-live, clear the prototype's `annotation.bundle.json` `annotations` array and rebuild—the PRD-side sources stay archived, not deleted. Do not keep prior iterations' annotations on the prototype or maintain a full-product annotation CMS.
 
-Every annotation block must include a readable `来源` line that names the current PRD file or section it summarizes. Keep the matching `sourceRefs` in `annotation.config.json` for validation and coverage.
+`annotation.workspace.json` must have a **single** `inputs` entry pointing at this iteration's `annotation.config.json`. Never list the prototype `public/annotation-kit/annotation.bundle.json` as an input.
+
+Every annotation block must include a readable `来源` line and matching `sourceRefs` in `annotation.config.json`.
+
+Do not create `changelog.md` or `versions/` unless explicitly requested.
 
 ## Annotation Directory
 
@@ -68,6 +72,16 @@ When reading PRDs, extract:
 - Exception flows: failed requests, permission loss, duplicate submissions, missing data.
 - Integration notes: APIs, idempotency, import/export, audit logs, and downstream references.
 - Visibility states: whether the target is initially visible or appears only after opening a modal, drawer, popover, accordion, tab panel, or route.
+
+## Page Layer vs State Layer
+
+- **Page layer**: `page` = a representative **real** route from the app router. Use `routeMatcher` for equivalent paths on the same screen (for example `engage/(create|engage-create|edit/|look/)` or `engage/behaviors$`). Never invent sub-routes such as `/module/modal` or `/form/step2` when the SPA has no such path.
+- **State layer**: modals, drawers, expanded rows, wizard steps, and in-tab regions are **not** separate routes. They share the host page's `page` / `routeMatcher` and are distinguished by whether the anchored DOM exists. Set `scopeLabel` on the config block (for example `弹窗：新建/编辑行为`) so the panel shows a green scope tag.
+- If reviewers land on the page without performing the reveal action, missing badges are expected; the panel may show「需操作后查看」—that is not a missing annotation.
+
+### Badge numbering within a routeMatcher group
+
+Within one `routeMatcher` group (or `page` when `routeMatcher` is absent), ids must be consecutive and unique: host surface `1..n`, then modal/drawer blocks `n+1..m` when they can appear on the same URL. Different URLs each restart from `1`. Never maintain two parallel id sequences on the same matcher (duplicate「1」on screen).
 
 ## Aggregation Rules
 
@@ -215,9 +229,9 @@ Parsing rules:
 - One Markdown file may contain many annotation blocks.
 - Page popup content must render the extracted block, not the whole file.
 - Markdown changes become visible after recompiling the bundle and refreshing or reloading the page.
-- Module display ids may repeat across scopes. Runtime and aggregate-export identity is `scope:id`; never renumber an existing module merely because another module joins the workspace.
-- Use `page: "*"` for a single static page. For a route-specific annotation, verify the configured page against the browser URL; the runtime supports both raw and decoded path matching.
-- Hidden modules do not render badges until visible. Verify each modal, drawer, popover, accordion and tab-panel annotation in its revealed state.
+- Display ids are unique within each routeMatcher group; different URL groups may both use `1`. Export identity remains `scope:id`.
+- Use `page: "*"` for a single static page. For routed pages, verify `page` and `routeMatcher` against `App.tsx` (or project router file) before deploy.
+- Hidden modules do not render badges until visible; verify in the revealed state and confirm `scopeLabel` / panel「需操作后查看」when appropriate.
 
 ## Supplemental Annotation Rules
 

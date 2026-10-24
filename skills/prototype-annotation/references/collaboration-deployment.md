@@ -5,9 +5,10 @@
 The page runtime is a read-only annotation viewer:
 
 ```txt
-business PRD -> Codex or direct Markdown update -> annotations/*.md
-module annotations/configs -> optional workspace manifest -> compiler/coverage check -> annotation.bundle.json
-annotation.bundle.json -> Git/build/deploy -> annotation runtime -> page badges and popups
+iteration PRD kit -> annotations/*.md + annotation.config.json
+single-input workspace -> compile_annotations.py -> annotation.bundle.json (overwrite prototype public/annotation-kit)
+check_annotation_assets.py (--src, --routes) -> npm run build -> deploy with index.html ?v= bump on runtime assets
+after go-live: bundle annotations [] + rebuild; PRD annotations sources kept as archive only
 ```
 
 Do not add a browser editor, draft storage, save endpoint, persistence adapter, account system, or annotation write API.

@@ -61,13 +61,81 @@ Annotations are displayed in a **panel UI** (like Axure's annotation sidebar), n
 
 - **Entry buttons are floating & draggable**: the annotation entries ("标注清单" and "原型标注") must NOT occupy layout space or cover page controls — they are floating (fixed position), draggable by mouse (user can move them to a non-blocking spot). Implementation: fixed-position container with drag-to-reposition (pointer events), remember position in sessionStorage, no impact on page layout/flow
 
-## Annotation ID Numbering Standard (Mandatory — hard-won lesson 2026-08-19)
+## 页面层 vs 状态层（Mandatory — 2026-10 私域2.0）
 
-- **Each page's annotation blocks must be numbered independently starting from 1** — do NOT continue the previous page's numbering globally.
-- The badge number shown on the page = `annotation.id` (runtime.js reads `badge.textContent = annotation.id`). If IDs are numbered globally across pages (e.g. list page = 1..9, then create page = 10..18, then detail = 19..28), then entering each new page shows badges starting from 10/19 instead of 1, and a large module accumulates to 100+.
-- **Correct pattern**: in `annotation.config.json` (and the annotation `.md` source blocks), each `page` restarts its block IDs from `1` and counts up consecutively within that page (list=1..9, create=1..9, detail=1..10). Same ID number may reappear on a different page — that is fine, because badges are rendered per-page (`routeMatcher` scopes to the current page).
-- Verify after compile: every page's blocks have IDs `1..N` with no gaps/duplications within the page.
-- **Golden rule**: badge number = per-page order, never a global running counter.
+标注模型分两层：**页面**（真实路由）与**状态**（同一 URL 下靠 DOM 区分的可见形态）。不要把弹窗、抽屉、向导步骤写成不存在的子路由。
+
+### 页面层：`page` 与 `routeMatcher`
+
+- `page` 写**代表性真实路由**（与 `App.tsx` 等路由表一致），禁止伪造路径，例如 `/engage/behaviors/modal`、`/xxx/step2` 这类 SPA 里不存在的子路由。
+- `routeMatcher` 覆盖**同一页面**的等价路由，例如表单页 `engage/(create|engage-create|edit/|look/)`，列表页 `engage/behaviors$`。
+- 菜单或模块迁移后（如 `/auth/tags` → `/engage/tags`），必须同步改 `page` / `routeMatcher`；否则编译可能仍通过，标注会在线上**静默消失**。
+
+### 状态层：锚点 + `scopeLabel`（不靠路由）
+
+- 弹窗、抽屉、展开行、向导步骤、页签内区域：**不**用独立 `page` 路径区分，用 `target.selector` 锚定 DOM；仅当该元素出现在 DOM 时角标才挂载。
+- 在标注块配置上加 `scopeLabel`，写清所属状态，例如 `弹窗：新建/编辑行为`、`受众筛选-行为页签`。面板会以**绿色标签**展示，便于评审区分宿主页与叠加态。
+- 需要用户先操作才出现的区域：评审进页看不到角标是**正常**的；面板会标为「需操作后查看」，**不得**据此判定为未标注或漏配。
+
+## 角标编号（routeMatcher 分组，Mandatory — 2026-10 私域2.0）
+
+角标数字 = `annotation.id`（runtime 直接渲染）。编号按 **routeMatcher 分组**（无 `routeMatcher` 时以 `page` 为分组键），不是按「伪造子路由」或两套配置各编一套。
+
+- **同一 routeMatcher 分组内**：`id` 必须连续且**全局唯一**，禁止宿主页与弹窗各从 `1` 开始（否则同屏会出现两个「1」、两个「3」）。
+- **同一屏会同时出现的块**（宿主页 + 其弹窗/抽屉）：共用一个号段——宿主页 `1..n`，弹窗/抽屉接着 `n+1..m`。
+- **不同 URL 的页面**：各自从 `1` 开始（这一点不变）；不同分组之间可以重复数字，但同一分组内不可重复。
+- 发版前必须用 `check_annotation_assets.py` 校验同一分组内无撞号（见「发版前三道命令」）。
+
+## 迭代化标注与上下线（Mandatory — 产品口径）
+
+标注不是 CMS 全量资产，而是**一个迭代一套**：一个迭代 = 一套 PRD 套件 = 一份 annotations。标注随迭代生、随上线死；**不要把历史迭代的标注继续挂在原型上，也不要做全量标注。**
+
+### 目录与编译输入
+
+- 本迭代标注只放在该迭代 PRD 套件目录下，例如 `03-产品设计/私域2.0一期/04-评审PRD/annotations/`。
+- `annotation.workspace.json` 的 `inputs` **只允许一个输入源**：本迭代的 `annotation.config.json`。**禁止**把原型 `public/annotation-kit` 下的编译产物再列为 input（会自复制、角标翻倍）。
+- `output` 指向 `99-产品原型prototype/public/annotation-kit/annotation.bundle.json`，**覆盖式**写入。
+
+### 新迭代开始
+
+- 新建本迭代的 `annotations/` 目录与 config，编译覆盖写入原型 bundle；**不**沿用上一轮留在原型里的旧 bundle 内容。
+
+### 本迭代上线后下线标注（原型恢复干净）
+
+1. 将原型 `public/annotation-kit/annotation.bundle.json` 里的 `annotations` 置为 `[]`（`runtime` 与业务代码不动）。
+2. 在 `99-产品原型prototype` 执行 `npm run build` 并随正常发版部署。
+3. PRD 目录下本迭代的 annotations 源文件（`.md` 与 `annotation.config.json` 等）**保留留档，不删**；只是不再部署到原型。
+
+## 发版前三道命令（Mandatory gate）
+
+在业务项目根目录（示例：`/Users/liulongfei/个人文件/WorkSpace/vivo/cms-project`）依次执行，**三条必须全绿**，不得跳过：
+
+```bash
+python3 <PMLOPHY_SKILLS_PATH>/skills/prototype-annotation/scripts/compile_annotations.py "03-产品设计/私域2.0一期/04-评审PRD/annotations/annotation.workspace.json"
+
+python3 <PMLOPHY_SKILLS_PATH>/skills/prototype-annotation/scripts/check_annotation_assets.py 99-产品原型prototype/public/annotation-kit --src 99-产品原型prototype/src --routes 99-产品原型prototype/src/App.tsx
+
+cd 99-产品原型prototype && npm run build
+```
+
+说明：`check_annotation_assets.py` 在资产校验之外会拦截三类**静默失败**——(1) `target.selector` 锚点在 `--src` 源码中不存在；(2) `page` / `routeMatcher` 命不中真实路由或只命中重定向路由；(3) 同一 `routeMatcher` 分组内角标 `id` 撞号。仅跑编译、不加 `--src` / `--routes` 不足以交付。
+
+## 运行时资源缓存版本（Mandatory）
+
+每次向原型发版标注或更新 `annotation-kit` 运行时，递增 `99-产品原型prototype/index.html` 里 annotation-kit 相关引用上的 `?v=`（`runtime.css`、`override.css`、`runtime.js` 三处），格式 `v=YYYYMMDDx`（日期 + 当日序号）。不递增时 Cloudflare 等 CDN 可能长期缓存旧文件，用户已部署新代码仍看到旧角标或旧面板行为。
+
+## 交付前检阅清单（Mandatory）
+
+发版或交给评审前，人工核对（脚本不能替代全部语义）：
+
+| 检查项 | 做法 |
+| --- | --- |
+| 条数一致 | 角标数量与 `annotation.config.json` 中本迭代块数一致（编译后 bundle 条数一致） |
+| 分组内无重号 | 同一 `routeMatcher`（或同一 `page`）分组内无重复 `id`；宿主页 + 弹窗/抽屉共屏时号段连续 |
+| 需操作区域 | 弹窗/抽屉等块在面板上有 `scopeLabel`；未开弹窗时角标缺失但面板标「需操作后查看」属预期 |
+| 旧迭代已下线 | 原型 bundle 非上一轮残留；新迭代已覆盖编译；上线后 bundle `annotations` 已清空并 rebuild |
+| 路由未漂移 | 菜单/路由迁移后 `page` / `routeMatcher` 与 `App.tsx` 一致 |
+| 缓存版本 | `index.html` 三处 `?v=` 已递增 |
 
 ## Drag & Click Coexistence Standard (Mandatory — hard-won lesson)
 
@@ -222,7 +290,7 @@ Each annotation block's **detail content** must be organized into **tab pages** 
 - Each tab's content must be accurate to the PRD: 交互说明 covers click/state behaviors, 业务规则 covers validation/permissions/exceptions, 字段说明 covers field-level rules
 - Tab filter (`type` classification) remains: page/page-global/interaction/rule/field/pending; `page-global` is grouped in the 页面 tab while retaining its distinct runtime type.
 
-Maintain one current annotation set for the current prototype. Update Markdown blocks in place; the runtime must display only the latest rules. Do not create or maintain changelogs, version folders, or historical annotation copies unless the user explicitly asks for them. Keep a readable `来源` line in each Markdown block and retain `sourceRefs` in configuration so current annotations can point back to the current PRD files and sections.
+For the **active review iteration**, maintain one annotation set compiled into the prototype bundle. PRD-side annotation sources are archived per iteration under that iteration's PRD folder; after go-live, clear the prototype bundle (`annotations: []`) per「迭代化标注与上下线」. Do not stack multiple iterations on the prototype. Do not create changelogs or `versions/` unless explicitly requested. Keep a readable `来源` line and valid `sourceRefs` on every block.
 
 The page annotation runtime is strictly read-only. Never add annotation editing, drafts, save APIs, or browser-to-Markdown write-back. Annotation content is changed only by editing Markdown files directly or by asking Codex to update them.
 
@@ -281,7 +349,7 @@ Treat annotation Markdown files as authoring source and `annotation.bundle.json`
 Use this mapping:
 
 - Each module's `annotation.config.json` stores its `scope`, page, target selector, `markdownFile`, `blockId`, and requirement source references.
-- `annotation.workspace.json` optionally aggregates multiple module configs into one runtime bundle while allowing each module to keep local numbering such as `1`, `2`, `3`.
+- `annotation.workspace.json` compiles one iteration's config into one bundle; per-iteration workspace `inputs` must list only that iteration's `annotation.config.json` (not the prototype's compiled bundle). Numbering follows「角标编号（routeMatcher 分组）」.
 - The Markdown file stores one or more blocks delimited by `<!-- anno:start id=... -->` and `<!-- anno:end id=... -->`.
 - `scripts/compile_annotations.py` validates the mapping and compiles Markdown blocks into `annotation.bundle.json`.
 - Runtime reads the bundle, renders matching badges/popups, and refreshes the deployed bundle without writing source files.
@@ -373,7 +441,7 @@ Use stable ids rather than implying priority:
 - Supplemental annotations: `A1`, `A2`, `A3`.
 - Nested additions under a known module: `1a`, `1b` only when the user wants explicit relationship to an existing module.
 
-Display ids are local to a module. The compiler creates the runtime key as `scope:id`, so `module-a:1` and `module-b:1` may coexist while both page badges display `1`. View-all and exported documents use `scope:id` to remain unambiguous.
+Display ids are unique within each `routeMatcher` group (see「角标编号」). The compiler creates the runtime key as `scope:id` for exports. Different URL pages may both use display id `1` in different groups; the same group must not reuse ids.
 
 When exporting all annotations, sort by page order first, then DOM order, then id.
 
@@ -404,22 +472,22 @@ Read `references/integration-patterns.md` before modifying a new project type. R
 - `scripts/install_annotation_kit.py`: copies runtime assets into a target project and can inject script/link tags into HTML entries.
 - `scripts/check_annotation_assets.py`: validates a compiled annotation-kit dir (bundle completeness, per-page unique ids, compiled-in markdown, target selectors, coverage) — no network/third-party deps.
 
-## Tooling Verification (three-step, deliverable gate)
+## Tooling Verification (deliverable gate)
 
-Working toolchain (compile -> check -> bundle) is NOT the deliverable. "Page actually shows badges" is the core value. Every delivery must show real evidence for all three:
+Working toolchain is NOT the deliverable; visible badges and correct panel behavior are. Every delivery must show real evidence for:
 
 1. **Scope judgement** — apply `references/annotation-scope.md`; output "N to annotate / M not, with reasons".
-2. **Compile and asset check** — run `compile_annotations.py` first, then `python3 scripts/check_annotation_assets.py <annotation-kit dir>` and paste both REAL outputs (not "script added").
-3. **Browser run** — open the page, confirm badges render, click shows content, no JS errors.
+2. **发版前三道命令** — full compile → `check_annotation_assets.py` with `--src` and `--routes` → `npm run build`; paste REAL outputs (all green).
+3. **Browser run** — open the page, confirm badges, `scopeLabel`,「需操作后查看」where expected, click → content, no JS errors.
 
-Annotation source stays PRD Markdown; field-fact constraints come from the TSV, business-level rules from the PRD. A scope/check that passes without a visible result does not conclude the task.
+Annotation source stays PRD Markdown per iteration; field facts from TSV, business rules from PRD. Passing compile alone does not conclude the task.
 
 ## 四层校验走查
 
 每次 v2 交付都按四层检查并记录证据：
 
 1. **来源层**：标注内容可追溯到 PRD、字段清单或明确的评审记录，不带入其他项目的事实。
-2. **结构层**：页面 block id 独立连续，区域级/`page-global` 类型正确，字段表格列完整，`sourceRefs` 覆盖 source requirements。
+2. **结构层**：同一 routeMatcher 分组（无 matcher 时按 page）的 block id 连续唯一，宿主页 1..n、同屏弹窗/抽屉 n+1..m；区域级/`page-global` 类型正确，字段表格列完整，`sourceRefs` 覆盖 source requirements。
 3. **资产层**：编译产物内联 Markdown，target 结构完整，页面内 id 不重复，coverage 无未映射项；表格表头和数据行计入数量，分隔行不计入。
 4. **运行层**：浏览器中确认 route、徽章、面板、六个详情 Tab、表格渲染、定位、滚动和只读边界；记录 JS 控制台无错误。
 
@@ -442,7 +510,7 @@ Before final response, verify:
 - Popups support click-to-open, close button, drag, resize, read-only export, and event isolation.
 - Runtime contains no edit controls, browser drafts, save endpoint, or write-back path.
 - Runtime refresh re-reads the deployed bundle and reconciles existing badges and open popups.
-- Configured `page` or `routeMatcher` matches the browser route; for a static one-page prototype, use `page: "*"`.
+- Configured `page` is a real route; `routeMatcher` covers equivalent paths; no fake `/modal` sub-routes; ids unique within each routeMatcher group; for static one-page prototypes, use `page: "*"`.
 - Optional standalone HTML output contains rendered Markdown rather than raw source text.
 - Markdown preview renders tables, nested ordered/unordered lists, task lists, headings, blockquotes, links, emphasis, and inline code.
 - Build or browser verification ran, or the reason it could not run is stated.

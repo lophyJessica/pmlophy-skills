@@ -120,7 +120,7 @@ python3 scripts/check_annotation_assets.py public/annotation-kit
 - 原型标注入口必须先显示区域序号，点击序号后再查看详情；
 - 页面滚动、Tab 状态和待确认问题需要保持；
 - 标注 runtime、bundle 与页面 `data-anno` 锚点必须同时存在并能命中；
-- 每个页面的标注编号独立从 1 开始；
+- 标注角标编号规则见 SKILL.md 的「角标编号」节，此处不重复。
 - 待确认是评审问题记录，不是从 PRD 自动抽取的内容；
 - 只读审阅原型，不用标注 runtime 改变业务功能。
 
