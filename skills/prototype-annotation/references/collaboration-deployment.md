@@ -2,13 +2,11 @@
 
 ## Read-Only Architecture
 
-The page runtime is a read-only annotation viewer:
+The page runtime is a read-only annotation viewer.源码与 bundle 分离、编译发版门禁见 SKILL.md §3.3 与 §7.1。迭代上线后原型端清空标注的操作见 §4.3。
 
 ```txt
-iteration PRD kit -> annotations/*.md + annotation.config.json
-single-input workspace -> compile_annotations.py -> annotation.bundle.json (overwrite prototype public/annotation-kit)
-check_annotation_assets.py (--src, --routes) -> npm run build -> deploy with index.html ?v= bump on runtime assets
-after go-live: bundle annotations [] + rebuild; PRD annotations sources kept as archive only
+annotations 源 (md + config) -> 编译 -> annotation.bundle.json -> 部署到原型 public/annotation-kit
+runtime 只读展示 bundle；不在浏览器内写回 Markdown
 ```
 
 Do not add a browser editor, draft storage, save endpoint, persistence adapter, account system, or annotation write API.

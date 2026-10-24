@@ -11,25 +11,11 @@ Never write generated annotation ids into the business PRD unless the user expli
 
 ## Iteration-Scoped Annotations (Not CMS Full Inventory)
 
-One product iteration = one PRD kit = one `annotations/` tree under that kit (for example `03-产品设计/私域2.0一期/04-评审PRD/annotations/`). Annotations exist for **review during that iteration**; after go-live, clear the prototype's `annotation.bundle.json` `annotations` array and rebuild—the PRD-side sources stay archived, not deleted. Do not keep prior iterations' annotations on the prototype or maintain a full-product annotation CMS.
-
-`annotation.workspace.json` must have a **single** `inputs` entry pointing at this iteration's `annotation.config.json`. Never list the prototype `public/annotation-kit/annotation.bundle.json` as an input.
-
-Every annotation block must include a readable `来源` line and matching `sourceRefs` in `annotation.config.json`.
-
-Do not create `changelog.md` or `versions/` unless explicitly requested.
+规则见 SKILL.md §2.4，本节只保留编写提醒：每块须有可读 `来源` 行及 config 中匹配的 `sourceRefs`。
 
 ## Annotation Directory
 
-Select the annotation directory before writing files:
-
-1. User-specified directory wins.
-2. Existing annotation directory wins if the project already has one.
-3. Otherwise create `annotations/` beside the main business PRD.
-4. If there are multiple PRDs, use the PRD that contains the source requirements for the annotated page.
-5. If no PRD is found, use project-root `annotations/` as a fallback and document the assumption.
-
-When several PRD-local annotation directories feed one deployed runtime, keep those directories independent and create one `annotation.workspace.json` at their nearest practical common annotation parent. The workspace is a build manifest, not a new source-of-truth document.
+目录选择与 `annotation.workspace.json` 输入规则见 SKILL.md §3.2；本节只保留多 PRD 示例路径与推荐目录结构。
 
 Examples:
 
@@ -56,8 +42,6 @@ annotations/
     record-create.md
 ```
 
-Create `changelog.md` or `versions/` only when the user explicitly needs recoverable snapshots, audit comparison, or release-by-release archives.
-
 ## Extraction Checklist
 
 When reading PRDs, extract:
@@ -75,13 +59,7 @@ When reading PRDs, extract:
 
 ## Page Layer vs State Layer
 
-- **Page layer**: `page` = a representative **real** route from the app router. Use `routeMatcher` for equivalent paths on the same screen (for example `engage/(create|engage-create|edit/|look/)` or `engage/behaviors$`). Never invent sub-routes such as `/module/modal` or `/form/step2` when the SPA has no such path.
-- **State layer**: modals, drawers, expanded rows, wizard steps, and in-tab regions are **not** separate routes. They share the host page's `page` / `routeMatcher` and are distinguished by whether the anchored DOM exists. Set `scopeLabel` on the config block (for example `弹窗：新建/编辑行为`) so the panel shows a green scope tag.
-- If reviewers land on the page without performing the reveal action, missing badges are expected; the panel may show「需操作后查看」—that is not a missing annotation.
-
-### Badge numbering within a routeMatcher group
-
-Within one `routeMatcher` group (or `page` when `routeMatcher` is absent), ids must be consecutive and unique: host surface `1..n`, then modal/drawer blocks `n+1..m` when they can appear on the same URL. Different URLs each restart from `1`. Never maintain two parallel id sequences on the same matcher (duplicate「1」on screen).
+规则见 SKILL.md §2.2–§2.3，本节不重复页面/状态路由与角标编号。
 
 ## Aggregation Rules
 
@@ -206,6 +184,8 @@ flowchart TD
 
 Annotation Markdown is the authoring source of truth. Compile one module config or a multi-module workspace into `annotation.bundle.json`; the read-only runtime loads that bundle and renders the matching block in the popup.
 
+`page` / `routeMatcher` / 角标 id 规则见 SKILL.md §2.2–§2.3；发版门禁见 §7.1。
+
 Config mapping:
 
 ```json
@@ -229,9 +209,6 @@ Parsing rules:
 - One Markdown file may contain many annotation blocks.
 - Page popup content must render the extracted block, not the whole file.
 - Markdown changes become visible after recompiling the bundle and refreshing or reloading the page.
-- Display ids are unique within each routeMatcher group; different URL groups may both use `1`. Export identity remains `scope:id`.
-- Use `page: "*"` for a single static page. For routed pages, verify `page` and `routeMatcher` against `App.tsx` (or project router file) before deploy.
-- Hidden modules do not render badges until visible; verify in the revealed state and confirm `scopeLabel` / panel「需操作后查看」when appropriate.
 
 ## Supplemental Annotation Rules
 
@@ -242,9 +219,11 @@ Supplemental annotations are first-class fragments created in Markdown or by Cod
 - Include target selector and page metadata in the HTML comment.
 - Export together with auto-generated annotations.
 
-## History Rules (Only When Explicitly Requested)
+## 历史快照（仅用户明确要求时）
 
-Create `changelog.md` inside the selected annotation directory only when the user explicitly asks for annotation history:
+规则见 SKILL.md §2.4（默认不建 changelog/versions）。用户明确要求审计或恢复点时，在 annotations 目录内维护，且不进入默认 runtime 输入。
+
+**changelog.md**（摘录格式示例）：
 
 ```md
 ## 2026-07-05
@@ -254,17 +233,9 @@ Create `changelog.md` inside the selected annotation directory only when the use
 - Removed `A1`: obsolete import button note after UI removal.
 ```
 
-Changelog records annotation changes, not every business PRD edit.
+每条记录：日期、标注 id、变更类型（Added/Updated/Removed/Moved/Split/Merged）、简短原因或 PRD 引用、受影响页面/模块。changelog 记标注变更，不记每条业务 PRD 编辑。
 
-Each changelog entry should include:
-
-- Date or timestamp.
-- Annotation id.
-- Change type: Added, Updated, Removed, Moved, Split, Merged.
-- Short reason or source PRD reference when known.
-- Affected page/module.
-
-Use this shape for richer entries:
+**富条目示例**：
 
 ```md
 ## 2026-07-05 15:30
@@ -275,11 +246,7 @@ Use this shape for richer entries:
 | Added | `A2` | 编号字段 | 新增唯一性校验的补充标注 |
 ```
 
-## Snapshot Rules
-
-Use `versions/<timestamp>/` only when a user asks for historical restore points or release archives.
-
-Snapshot structure:
+**versions/ 快照**：仅用户要恢复点或发布归档时使用。
 
 ```txt
 annotations/
@@ -291,4 +258,4 @@ annotations/
         record-create.md
 ```
 
-Snapshots should copy annotation Markdown outputs, not business PRDs or runtime files.
+快照只复制标注 Markdown 产出，不复制业务 PRD 或 runtime 文件。

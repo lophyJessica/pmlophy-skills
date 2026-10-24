@@ -25,8 +25,9 @@ For production-like use, compile source Markdown into `annotation-kit/annotation
 
 ### Route and initial-mode configuration
 
+`page` / `routeMatcher` 规则见 SKILL.md §2.2，本节只保留 initialMode 与静态页写法。
+
 - For one static HTML page, set annotation `page` to `"*"`; do not force a route matcher merely to name that file.
-- For routed pages, use the real path or `routeMatcher`. The runtime compares both the raw URL path and its decoded form, so a Chinese filename can be written in readable form.
 - Set `runtime.initialMode` to `"preview"` by default. Set it to `"annotate"` only for teaching, review or other annotation-first pages where badges should appear immediately.
 
 ## React, Vite, Vue, and Plain SPA
