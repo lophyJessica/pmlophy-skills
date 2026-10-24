@@ -41,14 +41,11 @@ Treat annotations as an external explanation layer, not as business UI. Keep the
 - 配置 `scopeLabel` 标明状态（如 `弹窗：新建/编辑行为`），面板以绿色标签展示。
 - 需先操作才可见的区域：进页无角标**正常**；面板可标「需操作后查看」，**不得**判为漏标。
 
-### 2.3 角标编号（routeMatcher 分组）
+### 2.3 角标、`screenState` 与编号
 
-角标数字 = `annotation.id`（runtime 直接渲染）。编号按 **routeMatcher 分组**（无 `routeMatcher` 时以 `page` 为分组键），禁止用伪造子路由或两套配置各编一套。
+角标数字 = `annotation.id`（runtime 直接渲染）。**宿主页、弹窗、抽屉等叠加态**须用独立 `screenState` 区分；runtime 只渲染**当前可见屏幕状态**那一套角标，避免同屏两套 `1` 撞号。`page` / `routeMatcher` 仍只描述真实路由（§2.2），不要用伪造子路由或两套配置各挂一套角标。
 
-- **同一 routeMatcher 分组内**：`id` 连续且唯一；禁止宿主页与弹窗/抽屉各从 `1` 开始（否则同屏两个「1」）。
-- **同屏共存**（宿主页 + 弹窗/抽屉）：宿主页 `1..n`，弹窗/抽屉 `n+1..m`。
-- **不同 URL**：各自从 `1` 开始；不同分组可重复数字，同一分组不可重复。
-- 导出全量标注时排序：页面顺序 → DOM 顺序 → `id`。编译器运行时键为 `scope:id`。
+**角标编号与屏幕状态规则见 `STANDARD.md` §5，此处不重复。**
 
 ### 2.4 迭代生命周期（随迭代生、随上线死）
 
@@ -122,7 +119,7 @@ Never assume a demo layout exists in the target project.
    - **出口**：`annotations/**/*.md`。**证据**：块与 PRD 来源可追溯。
 
 6. **Write `annotation.config.json` / workspace**
-   - `scope`（kebab-case）、`page` / `routeMatcher`、`target`、`markdownFile`、`blockId`、`type`、`scopeLabel`（状态块）；块 `id` 见 §2.3。
+   - `scope`（kebab-case）、`page` / `routeMatcher`、`screenState`、`target`、`markdownFile`、`blockId`、`type`、`scopeLabel`（状态块）；块 `id` 见 `STANDARD.md` §5。
    - 单 runtime 用 `annotation.workspace.json`（§2.4），禁止手工合并多份 config。
    - **出口**：config + workspace。**证据**：config 条数与 md 块一致。
 
@@ -206,7 +203,7 @@ Never assume a demo layout exists in the target project.
 | 字段 | 用途 |
 | --- | --- |
 | `scope` | 模块命名空间；导出键 `scope:id` |
-| `id` | 角标数字；规则见 §2.3 |
+| `id` | 角标数字；规则见 `STANDARD.md` §5 |
 | `page` | 代表性真实路由 |
 | `routeMatcher` | 同页等价路由正则 |
 | `scopeLabel` | 状态层绿色标签（弹窗/页签等） |
@@ -236,7 +233,7 @@ Never assume a demo layout exists in the target project.
 
 ### 6.3 显示 id 与补充 id
 
-- 常规块 id：见 §2.3。
+- 常规块 id：见 `STANDARD.md` §5（按 `screenState` 分组连续编号）。
 - 补充标注：`A1`、`A2`、`A3`（同等对待，导出含在内）。
 - 与用户明确要求时可用 `1a`/`1b` 表示从属关系。
 
@@ -258,7 +255,7 @@ python3 <PMLOPHY_SKILLS_PATH>/skills/prototype-annotation/scripts/check_annotati
 cd 99-产品原型prototype && npm run build
 ```
 
-`check` 额外拦截三类静默失败：(1) 锚点在 `--src` 中不存在；(2) `page` / `routeMatcher` 命不中真实路由或只命中重定向；(3) 同一 routeMatcher 分组内角标 `id` 撞号。仅 compile、不加 `--src`/`--routes` **不算交付**。
+`check` 额外拦截三类静默失败：(1) 锚点在 `--src` 中不存在；(2) `page` / `routeMatcher` 命不中真实路由（不含 `*` / `/*` 兜底）或只命中重定向、`routeMatcher` 过窄未覆盖本块 `page`；(3) 同一 `screenState` 下角标 `id` 重复或未从 1 连续。仅 compile、不加 `--src`/`--routes` **不算交付**。
 
 每次发版标注或更新 runtime：递增 `index.html` 中 `runtime.css`、`override.css`、`runtime.js` 的 `?v=`（格式 `v=YYYYMMDDx`）。**不递增会被 CDN（如 Cloudflare）长期缓存旧文件**，用户看不到新角标/面板行为。
 
@@ -267,7 +264,7 @@ cd 99-产品原型prototype && npm run build
 每次交付记录四层证据：
 
 1. **来源层**：内容可追溯 PRD/字段清单/评审记录，无他项目事实。
-2. **结构层**：块 id 与类型符合 §2.3、§5.3；`sourceRefs` 覆盖 source requirements。
+2. **结构层**：块 `id` / `screenState` 符合 `STANDARD.md` §5 与 §5.3；`sourceRefs` 覆盖 source requirements。
 3. **资产层**：bundle 内联 md、target 完整、coverage 无未映射；表头与数据行计入 coverage，分隔行不计。
 4. **运行层**：route、徽章、面板、六 Tab、表格、定位、滚动、只读边界；控制台无错。
 
@@ -276,7 +273,7 @@ cd 99-产品原型prototype && npm run build
 | 检查项 | 做法 |
 | --- | --- |
 | 条数一致 | 角标数 = config 块数 = bundle 条数 |
-| 分组内无重号 | 见 §2.3 |
+| 同屏状态内无重号 | 见 `STANDARD.md` §5 |
 | 需操作区域 | 有 `scopeLabel`；无角标但面板「需操作后查看」属预期 |
 | 旧迭代已下线 | bundle 无残留；上线后 `annotations: []` 已 build |
 | 路由未漂移 | `page` / `routeMatcher` 与路由表一致 |

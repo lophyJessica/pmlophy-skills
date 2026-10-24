@@ -95,8 +95,82 @@ class TenRulesTests(unittest.TestCase):
     def test_rule3_duplicate_id(self):
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
         write_kit(self.root, [base_annotation(), base_annotation()])
-        with self.assertRaisesRegex(ValueError, "Duplicate annotation id"):
+        with self.assertRaises(ValueError) as ctx:
             MODULE.check_assets(self.root)
+        self.assertIn("[判据3]", str(ctx.exception))
+
+    def _routes_with_catchall(self, extra_routes: str = "") -> None:
+        (self.src / "App.tsx").write_text(
+            f'<Route path="/records" />\n<Route path="/engage/create" />\n'
+            f'<Route path="/engage/edit/:id" />\n{extra_routes}<Route path="*" />',
+            encoding="utf-8",
+        )
+
+    def test_rule2_catchall_does_not_validate_fake_page(self):
+        self._routes_with_catchall()
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        msg = self.check_raises(base_annotation(page="/zzz/nope"))
+        self.assertIn("[判据2]", msg)
+        self.assertIn("不在真实路由表", msg)
+
+    def test_rule2_bogus_route_matcher(self):
+        self._routes_with_catchall()
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        msg = self.check_raises(base_annotation(routeMatcher="does-not-exist"))
+        self.assertIn("[判据2]", msg)
+        self.assertIn("未命中任何真实路由", msg)
+
+    def test_rule2_narrow_route_matcher(self):
+        self._routes_with_catchall()
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        msg = self.check_raises(
+            base_annotation(
+                page="/engage/edit/1",
+                routeMatcher="engage/create",
+            )
+        )
+        self.assertIn("[判据2]", msg)
+        self.assertIn("未覆盖本块 page", msg)
+
+    def test_rule8_four_empty_one_substantive(self):
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        shell = """### 页面内容\n暂无\n### 交互说明\n暂无\n### 业务规则\n暂无\n### 字段说明\n本块不涉及字段\n### 待确认\n暂无\n"""
+        msg = self.check_raises(base_annotation(markdown=shell))
+        self.assertIn("[判据8]", msg)
+
+    def test_rule8_three_empty_two_substantive(self):
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        md = """### 页面内容\n一句概述。\n### 交互说明\n暂无\n### 业务规则\n暂无\n### 字段说明\n本块不涉及字段\n### 待确认\n暂无\n"""
+        write_kit(self.root, [base_annotation(markdown=md)])
+        MODULE.check_assets(
+            self.root,
+            src=self.src,
+            routes_file=self.src / "App.tsx",
+            config_path=self.config,
+            prd_pages=["/records"],
+        )
+
+    def test_grouped_errors_all_criteria(self):
+        self._routes_with_catchall()
+        (self.src / "page.tsx").write_text("// no anchor", encoding="utf-8")
+        bad = VALID_MD.replace("本块不涉及字段", "见 §3.2 字段清单")
+        bad = "> 来源：prd.md\n" + bad
+        write_kit(
+            self.root,
+            [base_annotation(page="/zzz/nope", markdown=bad)],
+        )
+        with self.assertRaises(ValueError) as ctx:
+            MODULE.check_assets(
+                self.root,
+                src=self.src,
+                routes_file=self.src / "App.tsx",
+                config_path=self.config,
+                prd_pages=["/zzz/nope"],
+            )
+        msg = str(ctx.exception)
+        for rule in ("1", "2", "6", "7"):
+            self.assertIn(f"【判据{rule}】", msg)
+        self.assertNotIn("【判据10】", msg)
 
     def test_rule4_non_continuous(self):
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
@@ -114,6 +188,13 @@ class TenRulesTests(unittest.TestCase):
         bad = VALID_MD.replace("本块不涉及字段", "见 §3.2 字段清单")
         msg = self.check_raises(base_annotation(markdown=bad))
         self.assertIn("[判据6]", msg)
+
+    def test_rule6_empty_field_tab(self):
+        (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
+        bad = VALID_MD.replace("本块不涉及字段", "暂无")
+        msg = self.check_raises(base_annotation(markdown=bad))
+        self.assertIn("[判据6]", msg)
+        self.assertIn("为空或仅「暂无」", msg)
 
     def test_rule7_display_source(self):
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
@@ -136,6 +217,22 @@ class TenRulesTests(unittest.TestCase):
         (self.src / "page.tsx").write_text('[data-anno="record-list"]', encoding="utf-8")
         msg = self.check_raises(base_annotation(), prd_pages=["/other"])  # noqa: duplicate kw ok
         self.assertIn("[判据10]", msg)
+
+    def test_rule11_overlay_on_host(self):
+        msg = self.check_raises(
+            base_annotation(scopeLabel="弹窗：新建行为"),
+            prd_pages=["/records"],
+        )
+        self.assertIn("[判据11]", msg)
+        self.assertIn("弹窗：新建行为", msg)
+        self.assertIn("modal-", msg)
+
+    def test_rule11_overlay_with_modal_state_passes(self):
+        write_kit(
+            self.root,
+            [base_annotation(scopeLabel="弹窗：新建行为", screenState="modal-xxx")],
+        )
+        MODULE.check_assets(self.root)
 
 
 if __name__ == "__main__":

@@ -50,7 +50,7 @@ class AssetCheckerTests(unittest.TestCase):
                 "markdown": "## 页面内容\n\n- 页面规则。",
             }
             write_kit(root, [annotation, dict(annotation)])
-            with self.assertRaisesRegex(ValueError, "Duplicate annotation id on same page/state"):
+            with self.assertRaisesRegex(ValueError, r"\[判据3\]"):
                 MODULE.check_assets(root)
 
 

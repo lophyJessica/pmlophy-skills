@@ -11,6 +11,8 @@ bundle completeness, anchors, routes, screen-state id rules, and Markdown tab sh
     --config      annotation.config.json（判据 9、10）
     --prd-pages   本 PRD 页面清单，逗号或换行分隔（判据 10）
 
+判据 11：scopeLabel 以「弹窗」「抽屉」「弹层」开头时不得使用 host（或未填）screenState。
+
 六页签解析与 runtime.js 共用 scripts/annotation_tab_parse.py（与 runtime 内函数同步）。
 """
 import argparse
@@ -80,14 +82,106 @@ def collect_route_entries(routes_file: Path) -> tuple:
     return sorted(renderable), sorted(redirects)
 
 
+def is_catchall_route(route_path: str) -> bool:
+    return route_path in ('*', '/*')
+
+
+def meaningful_routes(renderable_paths: list[str]) -> list[str]:
+    return [p for p in renderable_paths if not is_catchall_route(p)]
+
+
 def route_matches(route_path: str, candidate: str) -> bool:
+    if is_catchall_route(route_path):
+        return False
     if route_path == candidate:
         return True
     if route_path.endswith('/*'):
         return candidate.startswith(route_path[:-1])
-    if route_path == '*':
-        return True
     return False
+
+
+def format_grouped_errors(errors: list[str], limit_per_group: int = 8) -> str:
+    groups: dict[str, list[str]] = {}
+    for message in errors:
+        match = re.match(r'\[判据(\d+)\]', message)
+        key = match.group(1) if match else '0'
+        groups.setdefault(key, []).append(message)
+    lines: list[str] = []
+    for key in sorted(groups.keys(), key=lambda item: int(item) if item.isdigit() else 99):
+        items = groups[key]
+        lines.append(f'【判据{key}】共 {len(items)} 条')
+        for item in items[:limit_per_group]:
+            lines.append(f'  - {item}')
+        if len(items) > limit_per_group:
+            lines.append(f'  … 另有 {len(items) - limit_per_group} 条')
+    return '\n'.join(lines)
+
+
+def tab_is_substantive(key: str, body: str) -> bool:
+    if key == 'field' and '本块不涉及字段' in body.replace(' ', ''):
+        return True
+    return not is_empty_tab_body(body)
+
+
+def route_matcher_hits(pattern: re.Pattern[str], meaningful: list[str], page: str) -> bool:
+    if any(pattern.search(path) for path in meaningful):
+        return True
+    if page and page != '*':
+        if pattern.search(page):
+            return True
+        for path in meaningful:
+            if path.endswith('/*') and page.startswith(path[:-1]) and pattern.search(page):
+                return True
+    return False
+
+
+def check_routes(annots: list[dict], renderable_paths: list[str], redirect_paths: list[str]) -> tuple[list[str], list[str]]:
+    meaningful = meaningful_routes(renderable_paths)
+    errors: list[str] = []
+    warnings: list[str] = []
+    for a in annots:
+        page = str(a.get('page') or '')
+        matcher = str(a.get('routeMatcher') or '').strip()
+        label = block_label(a)
+        if page in redirect_paths:
+            errors.append(f'[判据2] {label} page 为重定向路由，页面不会渲染')
+            continue
+        if matcher:
+            try:
+                pattern = re.compile(matcher)
+            except re.error:
+                errors.append(f'[判据2] {label} routeMatcher 非法正则: /{matcher}/')
+                continue
+            if not route_matcher_hits(pattern, meaningful, page):
+                errors.append(
+                    f'[判据2] {label} routeMatcher /{matcher}/ 未命中任何真实路由（已排除 *、/* 兜底）'
+                )
+                continue
+            if page and page != '*' and not pattern.search(page):
+                errors.append(
+                    f'[判据2] {label} routeMatcher 未覆盖本块 page（过窄，例如只匹配 create 漏 edit/）'
+                )
+            continue
+        if page == '*':
+            continue
+        if any(route_matches(path, page) for path in meaningful):
+            continue
+        if redirect_paths and any(route_matches(path, page) for path in redirect_paths):
+            errors.append(f'[判据2] {label} page 为重定向路由，页面不会渲染')
+            continue
+        if ':' in page:
+            prefix = page.split(':', 1)[0]
+            if any(p.startswith(prefix) for p in meaningful):
+                warnings.append(f'{label} page {page} 为参数路由，建议写 routeMatcher 明确覆盖')
+                continue
+        if any(
+            not is_catchall_route(path) and path.endswith('/*') and page.startswith(path[:-1])
+            for path in renderable_paths
+        ):
+            warnings.append(f'{label} page {page} 由前缀通配路由覆盖，建议写 routeMatcher 明确范围')
+            continue
+        errors.append(f'[判据2] {label} page 不在真实路由表（已排除 *、/* 兜底）')
+    return errors, warnings
 
 
 def selector_anchor(selector: str) -> str:
@@ -112,6 +206,45 @@ def block_label(annotation: dict) -> str:
     return f"{annotation.get('page')}#{annotation.get('id')} screenState={screen_state(annotation)}"
 
 
+OVERLAY_SCOPE_PREFIXES = ('弹窗', '抽屉', '弹层')
+
+
+def scope_label_requires_overlay_state(scope_label: str) -> bool:
+    text = str(scope_label or '').strip()
+    return any(text.startswith(prefix) for prefix in OVERLAY_SCOPE_PREFIXES)
+
+
+def suggested_overlay_screen_state(scope_label: str) -> str:
+    text = str(scope_label or '').strip()
+    if text.startswith('弹窗'):
+        kind = 'modal'
+    elif text.startswith('抽屉'):
+        kind = 'drawer'
+    else:
+        kind = 'overlay'
+    detail = re.sub(r'^弹窗|^抽屉|^弹层', '', text).lstrip('：:').strip() or 'state'
+    token = re.sub(r'[/\s]+', '-', detail)
+    token = re.sub(r'[^\w\-一-龥]', '', token)[:40] or 'state'
+    return f'{kind}-{token}'
+
+
+def check_screen_state_attribution(annots: list[dict]) -> list[str]:
+    errors: list[str] = []
+    for a in annots:
+        scope = str(a.get('scopeLabel') or '').strip()
+        if not scope_label_requires_overlay_state(scope):
+            continue
+        if screen_state(a) != 'host':
+            continue
+        label = block_label(a)
+        suggested = suggested_overlay_screen_state(scope)
+        errors.append(
+            f'[判据11] {label}: scopeLabel「{scope}」为叠加态，当前 screenState=host（或未填）；'
+            f'应改为独立 screenState（建议 {suggested}，与同弹窗/抽屉各块共用同一值）'
+        )
+    return errors
+
+
 def parse_prd_pages(raw: str) -> list[str]:
     parts = re.split(r'[,，\n]+', raw or '')
     return [p.strip() for p in parts if p.strip()]
@@ -128,6 +261,8 @@ def numeric_ids(ids: list[str]) -> list[int]:
 def check_field_tab(annotation: dict, body: str) -> Optional[str]:
     if '本块不涉及字段' in body.replace(' ', ''):
         return None
+    if is_empty_tab_body(body):
+        return '字段说明为空或仅「暂无」，须为四列表格或「本块不涉及字段」'
     if POINTER_PHRASE.search(body):
         return '字段说明出现「见§/参见」指路'
     if FIELD_TABLE_HEADER.search(body):
@@ -146,22 +281,24 @@ def check_annotation_markdown(annotation: dict) -> list[str]:
     if DISPLAY_SOURCE.search(md):
         errors.append(f'[判据7] {label} 页签「全文」: Markdown 含展示用来源行，应只写在 sourceRefs')
     sections = parse_annotation_tabs(md)
-    empty_tabs = 0
     for key in TAB_KEYS:
         body = tab_body(sections, key)
+        if key == 'field':
+            field_err = check_field_tab(annotation, body)
+            if field_err:
+                errors.append(f'[判据6] {label} 页签「字段说明」: {field_err}')
         if is_empty_tab_body(body):
-            empty_tabs += 1
             continue
         count = count_markdown_items(body)
         if count == 0 and len(body.strip()) > 8:
             tab_name = {'page': '页面内容', 'interaction': '交互说明', 'rule': '业务规则', 'field': '字段说明', 'pending': '待确认'}[key]
             errors.append(f'[判据5] {label} 页签「{tab_name}」: 有正文但条目统计为 0（与 runtime 解析不一致）')
-        if key == 'field':
-            field_err = check_field_tab(annotation, body)
-            if field_err:
-                errors.append(f'[判据6] {label} 页签「字段说明」: {field_err}')
-    if empty_tabs >= 5:
-        errors.append(f'[判据8] {label}: 六个页签中 {empty_tabs} 个为空或仅「暂无」，属空壳块')
+    substantive = sum(1 for key in TAB_KEYS if tab_is_substantive(key, tab_body(sections, key)))
+    if substantive < 2:
+        errors.append(
+            f'[判据8] {label}: 实质有内容的页签仅 {substantive} 个（须至少 2 个）；'
+            f'字段说明写「本块不涉及字段」计为有内容'
+        )
     return errors
 
 
@@ -243,14 +380,16 @@ def check_assets(
     if not isinstance(annots, list) or not annots:
         raise ValueError('Bundle has no annotations')
 
+    errors: list[str] = []
     seen = set()
     for a in annots:
         key = (a.get('page'), screen_state(a), a.get('id'))
         if key in seen:
-            raise ValueError(f'Duplicate annotation id on same page/state: {key}')
+            errors.append(f'[判据3] 同一 page/screenState 下 id 重复: {key}')
         seen.add(key)
 
-    errors = check_id_groups(annots)
+    errors.extend(check_id_groups(annots))
+    errors.extend(check_screen_state_attribution(annots))
 
     for a in annots:
         if a.get('markdownFile'):
@@ -264,10 +403,7 @@ def check_assets(
     if not bundle.get('coverage'):
         raise ValueError('Bundle missing coverage export')
 
-    if errors:
-        raise ValueError(errors[0] if len(errors) == 1 else ';\n'.join(errors[:20]))
-
-    warnings = []
+    warnings: list[str] = []
     result = {
         'annotations': len(annots),
         'pages': len({a.get('page') for a in annots}),
@@ -290,8 +426,7 @@ def check_assets(
             anchors = [x for x in anchors if x]
             if anchors and not any(anchor in source_text for anchor in anchors):
                 missing.append(f'[判据1] {block_label(a)} 锚点 {"/".join(anchors)} 在源码中不存在')
-        if missing:
-            raise ValueError('; '.join(missing[:12]))
+        errors.extend(missing)
         result['anchors_checked'] = len([a for a in annots if a.get('type') != 'page-global'])
 
     if routes_file:
@@ -301,51 +436,21 @@ def check_assets(
         renderable_paths, redirect_paths = collect_route_entries(routes_file)
         if not route_paths:
             raise ValueError(f'No route path found in {routes_file}')
-        unmatched = []
-        for a in annots:
-            page = str(a.get('page') or '')
-            matcher = a.get('routeMatcher') or ''
-            if page in redirect_paths:
-                unmatched.append(f'[判据2] {block_label(a)} page 为重定向路由，页面不会渲染')
-                continue
-            if matcher:
-                pattern = re.compile(matcher)
-                if any(pattern.search(p) for p in renderable_paths):
-                    continue
-                if any(route_matches(p, page) for p in renderable_paths):
-                    warnings.append(f'{block_label(a)} matcher 未能对通配路由静态验证')
-                    continue
-                if redirect_paths and any(route_matches(p, page) for p in redirect_paths):
-                    unmatched.append(f'[判据2] {block_label(a)} page 为重定向路由，页面不会渲染')
-                    continue
-                unmatched.append(f'[判据2] {block_label(a)} routeMatcher /{matcher}/ 未命中真实路由')
-                continue
-            if any(route_matches(p, page) for p in renderable_paths):
-                continue
-            if redirect_paths and any(route_matches(p, page) for p in redirect_paths):
-                unmatched.append(f'[判据2] {block_label(a)} page 为重定向路由，页面不会渲染')
-                continue
-            if ':' in page:
-                prefix = page.split(':')[0]
-                if any(p.startswith(prefix) for p in route_paths):
-                    warnings.append(f'{page} 为参数路由，建议写 routeMatcher')
-                    continue
-            unmatched.append(f'[判据2] {block_label(a)} page 不在路由表')
-        if unmatched:
-            raise ValueError('; '.join(sorted(set(unmatched))[:12]))
+        route_errors, route_warnings = check_routes(annots, renderable_paths, redirect_paths)
+        errors.extend(route_errors)
+        warnings.extend(route_warnings)
         result['routes_checked'] = len(route_paths)
 
     if config_path:
         if not config_path.is_file():
             raise ValueError(f'--config is not a file: {config_path}')
         config = json.loads(config_path.read_text(encoding='utf-8'))
-        ref_errors = check_source_refs(config, annots)
-        if ref_errors:
-            raise ValueError('; '.join(ref_errors[:12]))
+        errors.extend(check_source_refs(config, annots))
         if prd_pages:
-            page_errors = check_prd_pages(annots, prd_pages)
-            if page_errors:
-                raise ValueError('; '.join(page_errors[:12]))
+            errors.extend(check_prd_pages(annots, prd_pages))
+
+    if errors:
+        raise ValueError(format_grouped_errors(errors))
 
     if warnings:
         result['warnings'] = warnings[:12]
@@ -375,4 +480,4 @@ if __name__ == '__main__':
     try:
         main()
     except (ValueError, OSError) as error:
-        raise SystemExit(f'Annotation assets invalid: {error}') from error
+        raise SystemExit(f'Annotation assets invalid:\n{error}') from error
