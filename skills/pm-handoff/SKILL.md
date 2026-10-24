@@ -1,6 +1,6 @@
 ---
 name: pm-handoff
-description: Compact the current task into a portable handoff so a new session, model, agent, or collaborator can continue without replaying the whole conversation.
+description: 当要把当前任务压缩成一份可携带的交接，让新会话、换模型、换 agent 或换协作人都能接着干、不用重放整段对话时用。
 version: 1.0.0
 author: Lophy / Hermes Agent
 license: MIT

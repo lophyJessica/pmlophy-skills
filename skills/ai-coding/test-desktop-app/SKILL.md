@@ -1,6 +1,6 @@
 ---
 name: test-desktop-app
-description: Use to do real end-to-end verification of a packaged desktop app (Electron or other) — launch it, drive a realistic full flow, and confirm each step actually works, not just that the build passes.
+description: 当要对打包好的桌面应用（Electron 等）做真实端到端验证时用。启动它，走一遍完整真实流程，确认每一步真的能用，而不是 build 通过就算完。
 ---
 
 # Test Desktop App

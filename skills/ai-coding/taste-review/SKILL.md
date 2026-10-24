@@ -1,6 +1,6 @@
 ---
 name: taste-review
-description: Ask Claude Code to make a taste-driven call on something ambiguous — UI polish, prose phrasing, naming, formatting. Use when you'd otherwise guess.
+description: 当遇到模糊、需要靠品味判断的事（界面打磨、文案措辞、命名、格式）而自己只能瞎猜时用。会调用 claude CLI 给出判断再落地。
 ---
 
 You hit something fuzzy and need a judgment call. Shell out to the `claude` CLI to get one back, then apply it.

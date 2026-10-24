@@ -1,6 +1,6 @@
 ---
 name: prototype-annotation
-description: Low-intrusion product-logic annotation workflow for existing prototypes and frontend projects. Use when Codex needs to add, initialize, update, or export page-level business annotations for already-built HTML, React, Vue, SPA, admin-system, Axure-like, Figma-exported, or static prototype pages by reading business PRDs, mapping requirements to UI elements, injecting a lightweight annotation runtime, and writing separate Markdown annotation documents without polluting the original PRD or business code.
+description: 当要给已建好的原型或前端页面加、初始化、更新、导出页面级业务标注时用。读业务 PRD，把需求映射到界面元素，注入轻量标注运行时，标注内容单独存 Markdown，不污染原 PRD 和业务代码。适用于 HTML、React、Vue、SPA、后台系统、类 Axure、Figma 导出或静态原型页面。
 ---
 
 # Vitamin Prototype Annotation

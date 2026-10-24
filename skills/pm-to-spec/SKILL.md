@@ -1,6 +1,6 @@
 ---
 name: pm-to-spec
-description: Turn an already-discussed product decision into an agent-ready implementation specification without reopening settled questions.
+description: 当要把已经讨论定案的产品决策，转成 agent 可直接执行的实现规格时用，不重开已定的问题。
 version: 1.0.0
 author: Lophy / Hermes Agent
 license: MIT

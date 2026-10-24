@@ -1,6 +1,6 @@
 ---
 name: a2a-instruction-format
-description: Write precise instructions for AI coding agents (Codex, 反重力/Antigravity) — five-segment format, per-project splitting, tool division, and common pitfalls.
+description: 当要给 AI 编程 agent（Codex、反重力 Antigravity 等）写可执行指令时用。五段式结构（Context / Request / Output format / 红线禁止 / Checkpoint）、按项目拆分、工具分工与常见踩坑。
 trigger:
   - User says "给Codex的指令" / "给反重力的指令" / "A2A指令" / "编译指令"
   - User needs to delegate a coding task to an external AI agent

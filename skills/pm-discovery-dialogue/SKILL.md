@@ -1,6 +1,6 @@
 ---
 name: pm-discovery-dialogue
-description: Use when a PM needs to uncover missing business context, test whether a requested feature is a real need, prepare a stakeholder interview, or turn an information gap into an async questionnaire.
+description: 当需要挖出缺失的业务背景、验证对方提出的功能是不是真需求、准备干系人访谈，或把信息缺口变成异步问卷时用。
 version: 1.0.0
 author: Lophy / Hermes Agent
 license: MIT

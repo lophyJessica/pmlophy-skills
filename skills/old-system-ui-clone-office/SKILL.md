@@ -1,17 +1,6 @@
 ---
 name: old-system-ui-clone-office
-description: >
-  【办公适配版·本用户】老系统复刻，采集车头=Cursor 内置浏览器（可登录/持久登录态/任意工作 URL），适配办公机/CMS 复刻场景。
-  老系统、竞品后台、ERP/WMS/CRM/OA/MES 等企业后台页面克隆与精细还原。
-  Use when the agent must capture source UI evidence from legacy/internal/admin systems
-  using Chrome/CDP/DOM probes, screenshots, computed styles, design tokens, Page Maps,
-  interaction states, then implement or iterate a faithful React + Vite + Tailwind clone
-  without modernizing or replacing the source with a generic admin template.
-  Also use for incremental page cloning, evidence-only capture, screenshot-only static
-  reconstruction, visual QA, interaction QA, asset/state evidence, and design-system
-  extraction from verified legacy UI clones. Do not use it to silently redesign or
-  modernize the source; route those requests to a product-design workflow.
-  Triggers: 老系统克隆、页面还原、竞品 UI、后台复刻、企业后台、ERP、WMS、CRM、OA、MES、DOM 探针、CDP 采集、视觉验收、design-system 沉淀.
+description: 当要复刻老系统、竞品后台、ERP/WMS/CRM/OA/MES 等企业后台页面并精细还原时用（办公适配版，采集车头为 Cursor 内置浏览器，支持登录态与任意工作 URL）。用 Chrome/CDP/DOM 取证抓取截图、计算样式、设计令牌、页面地图与交互状态，再落地成忠实的 React + Vite 实现，不擅自现代化改造或替换成通用后台模板。也覆盖增量页面克隆、纯取证、仅截图静态还原、视觉与交互走查、资产与状态取证。
 ---
 
 # Old System UI Clone

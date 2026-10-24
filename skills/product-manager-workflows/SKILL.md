@@ -1,6 +1,6 @@
 ---
 name: product-manager-workflows
-description: Product management workflows for software PMs. Use when Codex needs to turn ideas, customer problems, stakeholder requests, meeting notes, research, metrics, screenshots, or backlog items into PM deliverables such as PRDs, user stories, acceptance criteria, MVP scope, prioritization, release notes, experiment plans, competitor analysis, roadmap options, design review feedback, or engineering handoff specs.
+description: 当要把想法、客户问题、干系人诉求、会议记录、调研、指标、截图或需求池条目，转成 PRD、用户故事、验收标准、MVP 范围、优先级、发布说明、实验计划、竞品分析、路线图选项、设计评审意见或研发交接规格等产品交付物时用。面向软件产品经理的通用工作流。
 ---
 
 # Product Manager Workflows

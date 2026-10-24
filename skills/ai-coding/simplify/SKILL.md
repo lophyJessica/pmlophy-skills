@@ -1,6 +1,6 @@
 ---
 name: simplify
-description: Use this skill automatically when you feel your code is ready for human review, and whenever writing or reviewing code comments. Ready means the code works and achieves a stated goal, verified by your own tests and/or, if you deem it necessary, human testing.
+description: 当代码写好准备交人评审时、或写与评审代码注释时自动使用。判定标准是代码能跑通并达成既定目标，且有自测或必要的人工验证。
 ---
 Review changes in the current branch, or in the scope the user specifies. Apply these criteria without changing behavior. Only touch code in that scope, and run the relevant existing checks after changes.
 

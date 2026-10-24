@@ -1,6 +1,6 @@
 ---
 name: pm-research
-description: Investigate a product, tool, API, policy, or current fact using high-trust primary sources, then separate verified facts, uncertainty, and recommendations.
+description: 当要调研某个产品、工具、API、政策或时效性事实时用。以高可信一手来源为主，产出分开写清已验证事实、不确定项和建议。
 version: 1.0.0
 author: Lophy / Hermes Agent
 license: MIT

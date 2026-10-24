@@ -1,6 +1,6 @@
 ---
 name: pm-prototype-decision
-description: Build a disposable prototype to answer one product question about UI, workflow, state, or information architecture before changing production code.
+description: 当要在改动生产代码之前，先用一个一次性原型回答某个产品问题（界面、流程、状态或信息架构）时用。
 version: 1.0.0
 author: Lophy / Hermes Agent
 license: MIT
