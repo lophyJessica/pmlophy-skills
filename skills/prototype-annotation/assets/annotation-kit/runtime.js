@@ -921,8 +921,13 @@ function showToast(message) {
   toast._timer = window.setTimeout(() => toast.classList.remove('show'), 1800);
 }
 
+function clearAnchoredMarkers() {
+  document.querySelectorAll('.vpa-anchored').forEach((element) => element.classList.remove('vpa-anchored'));
+}
+
 function measureBadges() {
   const root = ensureRoot();
+  clearAnchoredMarkers();
   const visibleIds = new Set();
   if (VPA_STATE.mode === 'preview') {
     VPA_STATE.badges.forEach((badge) => badge.remove());
@@ -955,8 +960,16 @@ function measureBadges() {
     badge._annotation = annotation;
     badge.textContent = annotation.id;
 
-    let left = Math.min(window.innerWidth - 28, Math.max(4, rect.right + 4));
-    let top = Math.min(window.innerHeight - 20, Math.max(4, rect.top - 8));
+    const BADGE_WIDTH = 28;
+    let left = rect.right + 4;
+    if (left + BADGE_WIDTH > window.innerWidth - 8) {
+      left = rect.left - BADGE_WIDTH;
+    }
+    if (left < 8) {
+      left = window.innerWidth - 36;
+    }
+    left = Math.min(window.innerWidth - 32, Math.max(4, left));
+    let top = Math.min(window.innerHeight - 24, Math.max(4, rect.top - 8));
 
     for (const pos of placedPositions) {
       if (Math.abs(pos.left - left) < 22 && Math.abs(pos.top - top) < 22) {
@@ -967,6 +980,9 @@ function measureBadges() {
 
     badge.style.left = `${left}px`;
     badge.style.top = `${top}px`;
+    if (placement.target) {
+      placement.target.classList.add('vpa-anchored');
+    }
   }
 
   VPA_STATE.badges.forEach((badge, id) => {
