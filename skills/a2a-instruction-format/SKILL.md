@@ -7,9 +7,9 @@ trigger:
   - User asks for a prompt to feed into Antigravity or Codex CLI
 ---
 
-# A2A Instruction Format (五段式)
+# A2A 指令格式（五段式）
 
-## Agent Role: 指令命令官 (Commander, NOT Executor)
+## Agent 角色：指令命令官（指挥官，不是执行者）
 
 > 方法论背景：AI 四工程框架（提示词→上下文→约束→循环）的实践映射与面试弹药见 `references/ai-four-engineering.md`——本 skill 的五段式/红线/门禁/管道都是"约束工程+循环工程"的具体落地。
 >
@@ -54,32 +54,33 @@ Hermes 在 A2A/前端/部署场景中的唯一职责: 写指令,不执行。
 - **Luna（省）**：小活/收口/续跑/低价跑量——便宜但质量低一档，指令边界清晰、任务拆小、验收到位才有效（Luna 需要明确指令+小范围+每步自测）。
 - **分层排活**：大活 Sol 打头，额度到警戒线切 Luna 收口——但 Luna 扛不住超大任务（用户实测"opencode 扛不住，只能开小灶的活"）。**切换引擎要告诉 Hermes**——同任务出两份自检报告 = 正常（先行版 + 收口版），不误判为重复。
 
-## Prompt delivery and execution guard
+## 提示词交付与执行门禁
 
-The instruction is for an external coding agent, not a document-generation task. For any code-change request, start with a direct execution sentence such as: “请直接修改代码，不要把本指令保存成 txt/md，也不要只输出计划。” Put the project path, task, and first action near the top. Keep the five-section structure, but do not let Output format, self-check, or deployment prose dominate the opening; otherwise Codex may interpret the whole prompt as a specification to save as a text file.
+本指令是给外部编程 agent 执行用的，不是文档生成任务。任何代码改动类请求，开头先给一句直接的执行指令，例如：“请直接修改代码，不要把本指令保存成 txt/md，也不要只输出计划。”项目路径、任务和第一步动作放在靠前位置。保留五段式结构，但不要让 Output format、自检或部署描述占满开头；否则 Codex 可能把整份提示词理解成一份要保存成文本文件的规格说明。
 
-**Copyability gate:** When the user asks for an instruction to paste into Workbuddy/Codex/Cursor, put the entire instruction inside exactly one outer ` ```plaintext ` code block. Do not put explanatory prose, headings, or additional code blocks outside it. Before sending, verify that the opening fence appears before the first instruction line and the closing fence appears after the final Checkpoint line. **文件内容交付同样适用（2026-08-24 用户纠正 "要在一个代码块中"）**：当交付的不是指令而是**要复制进项目/本地保存的文件内容**（AGENTS.md、CLAUDE.md、.cursorrules、模板文件等），同样必须整段放在**一个**代码块里给用户复制——先贴内容再补代码块、分块展示、嵌套三反引号都会让用户困惑或移动端复制截断。规则：指令=单代码块；文件内容交付=单代码块；代码块外只留极简交付说明（如"整段复制到 AGENTS.md"）。
+**可复制性门禁：**当用户要一份用于粘贴进 Workbuddy/Codex/Cursor 的指令时，把整份指令放进恰好一个外层 ` ```plaintext ` 代码块内。不要把解释性文字、标题或额外的代码块放在围栏外。发出前自查：开头围栏出现在指令第一行之前，结尾围栏出现在最后一条 Checkpoint 行之后。 **文件内容交付同样适用（2026-08-24 用户纠正 "要在一个代码块中"）**：当交付的不是指令而是**要复制进项目/本地保存的文件内容**（AGENTS.md、CLAUDE.md、.cursorrules、模板文件等），同样必须整段放在**一个**代码块里给用户复制——先贴内容再补代码块、分块展示、嵌套三反引号都会让用户困惑或移动端复制截断。规则：指令=单代码块；文件内容交付=单代码块；代码块外只留极简交付说明（如"整段复制到 AGENTS.md"）。
 **"改好发我" = 把修好的完整文件内容直接贴在聊天框（2026-08-24 用户发火 "直接聊天框发，听不懂吗？"）**：用户说"改好发我 / 给你改 / 你把这个改好发我"时，要的是**修改后的完整文件内容在一个代码块里发给他复制**——不是去 VPS 改文件+commit+push+让用户 pull，不是给 git 操作步骤，更不是"我改好了你去 pull"。曾犯：解决 draft 冲突后给了 git 命令让用户自己 checkout/pull，用户连续两次纠正"我让你把修改后发我，直接聊天框发，听不懂吗？"。判断标准：用户要**内容**时贴内容（完整文件），用户要**操作**时才给命令。移动端场景更是如此——他手机复制粘贴，不是执行终端。若文件较长，直接 write_file 到 VPS 后再 read_file 贴出全文，或直接在响应里拼完整 Markdown；禁止只贴 diff 或只贴改动片段。
-**⚠️ Enforcement failure (2026-08-23 user corrected 3 times):** "你现在给我的提示词不在一个代码块中" / "指令写在一个代码块里" / "后面提示词要注意都放在代码块里，这几次老错误，语法上注意下". The gates below already existed but were NOT followed in practice. Hard rule: EVERY agent prompt, without exception, is emitted as exactly one plaintext fence; inside it, no triple-backtick fences, no nested blocks, no headings outside the fence. Long tasks are split into numbered sequential steps, each step its own complete single-fence prompt, delivered one at a time after the user confirms the previous step finished. Before sending, do a final self-check that the first line after the opening fence is the Context header and the last line before the closing fence is the final Checkpoint — nothing outside the fence except the single line of delivery instruction the user asked for.
-**Phased-task gate:** When the task is a new project or has unresolved product/platform decisions, do not emit one giant implementation prompt. Split it into sequential prompts: (1) baseline and scope discovery, (2) platform or technical research, (3) stakeholder/business-question collection, (4) spec/data model, (5) implementation. Each prompt must be independently copyable in one code block, explicitly state what it does not do, and end with a stop condition waiting for the next round. Do not reference directories or artifacts that do not yet exist; for a from-scratch project, say so and create only the minimum first-step artifact.
+**⚠️ 门禁执行失守（2026-08-23 用户连纠 3 次）：** "你现在给我的提示词不在一个代码块中" / "指令写在一个代码块里" / "后面提示词要注意都放在代码块里，这几次老错误，语法上注意下"。下面的门禁早已存在，实际执行中却并没有被遵守。硬规则：每一条 agent 提示词，无一例外，都必须输出成恰好一个 plaintext 围栏；围栏内不得出现三反引号围栏和嵌套代码块，围栏外不得出现标题。长任务拆成编号的串行步骤，每一步都是一份完整的单围栏提示词，等用户确认上一步完成后再逐条交付。发出前做最后一次自查：开头围栏后的第一行是 Context 标题行，结尾围栏前的最后一行是最后的 Checkpoint——围栏外除了用户要的那一行交付说明，什么都不留。
+**分阶段任务门禁：**当任务是新项目、或还有未决的产品/平台决策时，不要输出一条巨型实现提示词。拆成串行的多轮提示词：(1) 基线与范围摸底，(2) 平台或技术调研，(3) 干系人/业务问题收集，(4) 规格/数据模型，(5) 实现。每条提示词必须能独立放进一个代码块里复制，明确写出它不做什么，并以等待下一轮的停止条件收尾。不要引用尚不存在的目录或产物；从零开始的项目要如实说明，且只产出最小的第一步产物。
 
-**No-nested-fence rule:** A single outer plaintext fence must not contain Markdown triple-backtick examples. Use indented text, inline code, or plain arrows inside the prompt. Nested fences make mobile copy/paste ambiguous and can truncate the instruction.
+**禁嵌套围栏规则：**单个外层 plaintext 围栏内不得包含 Markdown 三反引号示例。提示词内部改用缩进文本、行内代码或纯文本箭头。嵌套围栏会让移动端复制/粘贴产生歧义，还可能把指令截断。
 
-**Context truthfulness gate:** Distinguish artifacts that actually exist from artifacts merely planned or supplied in the conversation. Before asking an agent to read a path, state whether it is an existing file, a user-provided attachment/description, or a future output. Never list a mature repository structure such as context/, PRD, docs, source code, Make exports, or deployment files for a project that is still being bootstrapped.
+**Context 真实性门禁：**区分真实存在的产物与只是计划中或会话里提供过的产物。让 agent 去读某个路径前，先说明它是已有文件、用户提供的附件/描述，还是未来的产出。绝不要给一个还在从零起步的项目列出 context/、PRD、docs、源码、Make 导出物、部署文件这类成熟仓库才有的结构。
 
-**Platform-selection discovery:** When a project may outgrow its current automation platform, research the platform space before designing around the incumbent. Compare the incumbent, self-hosted candidates, cloud candidates, and a custom backend queue against the actual scenarios, VPS resources, maintenance burden, non-technical operator experience, data ownership, API integration, retries, logs, and migration cost. Do not assume the incumbent is the final choice or recommend a popular tool without primary-source evidence.
+**平台选型调研：**当项目可能超出当前自动化平台的承载能力时，先调研整个平台可选空间，再围绕现有平台做设计。把现有平台、自托管候选、云服务候选和自建后端队列，对照实际场景、VPS 资源、维护负担、非技术操作者的使用体验、数据所有权、API 集成、重试、日志和迁移成本逐项比较。不要默认现有平台就是最终选择，也不要在没有一手来源证据的情况下推荐流行工具。
 
-**PM-friendly instruction shape:** The user is the product decision-maker, not the engineer. In discovery rounds, ask the external agent to inspect files and web sources itself, separate confirmed facts from proposals and questions for the stakeholder, and avoid pushing implementation-level decisions onto the user. Keep the first round small enough to run quickly and cheaply; use later rounds for deeper research and specs.
+**对 PM 友好的指令形态：**用户是产品决策者，不是工程师。调研轮里，让外部 agent 自己去查文件和网络来源，把已确认的事实与留给干系人的建议、待确认问题分开，避免把实现层的决策推给用户。第一轮保持足够小、能快速低成本跑完；更深入的调研和规格留给后续轮次。
 
-**Deployment command visibility for this user:** When an external agent is expected to deliver an artifact, do not rely on a bare “follow AGENTS.md” pointer. Put the complete copy-paste delivery commands in the instruction by default: build, ZIP from inside `dist/` with first-level `index.html`, `rsync`/`scp` to the exact incoming path, and the full self-check report upload command. The agent must report the ZIP filename, byte size, remote timestamp, and whether it uploaded or deployed. This is a deliberate exception to the general single-source-of-truth preference because Workbuddy/Codex have repeatedly skipped external commands when only referenced. For local-only UI iteration, omit deployment commands and explicitly say the round ends at local build/screenshot acceptance.
+**面向本用户的部署命令可见性：**当期望外部 agent 交付产物时，不要只靠一句“按 AGENTS.md 执行”的指针。默认把完整的可复制粘贴交付命令写进指令：build、在 `dist/` 内打包第一层为 `index.html` 的 ZIP、`rsync`/`scp` 传到精确的 incoming 路径，以及完整的自检报告上传命令。agent 必须回报 ZIP 文件名、字节数、远端时间戳，以及本轮是“已上传”还是“已部署”。这是对通用“单一事实源”偏好的一次有意例外，因为 Workbuddy/Codex 在只被引用、不给命令时已多次跳过外部命令。纯本地的 UI 迭代则省略部署命令，并明确说明本轮止于本地 build/截图验收。
 
-A self-check report is not deployment proof. The parent session must verify the received ZIP and, after deployment, compare online `index.html` timestamp, bundle name/mtime, deployment log, and HTTP status. HTTP 200 alone is insufficient because it may be the old build.
+自检报告不是部署证明。父会话必须核验收到的 ZIP，并在部署后比对线上 `index.html` 时间戳、bundle 文件名/mtime、部署日志和 HTTP 状态。只有 HTTP 200 不够——那可能还是旧构建。
 
-**Single source of truth:** do not maintain a second copy of deployment commands in every prompt. If `AGENTS.md` conflicts with the actual deployment script (for example, it says to upload a `dist/` directory while the script only detects timestamped ZIP files), fix the authoritative project instruction or deployment script before continuing; do not compensate by inventing a prompt-specific command.
+**单一事实源：**不要在每条提示词里维护第二套部署命令。如果 `AGENTS.md` 与实际部署脚本冲突（例如它写的是上传 `dist/` 目录，而脚本只检测带时间戳的 ZIP 文件），先修正权威的项目指令或部署脚本再继续；不要靠临时发明一条提示词专用的命令来补救。
 
-When the task is a bug fix on top of an already repaired baseline, say so explicitly: preserve the latest P0/P1/P2 changes and modify only the new bug. Use a unique timestamped ZIP name to avoid incoming/backup same-name detection. If an agent repeatedly claims deployment without a matching VPS artifact, switch to “agent only transfers ZIP + remote stat; parent deploys manually.”
+当任务是在已修复基线上再修 bug 时，要明确说出来：保留最新的 P0/P1/P2 改动，只改新 bug。用唯一的时间戳 ZIP 命名，避免 incoming/backup 的同名检测。如果 agent 反复声称已部署、VPS 上却没有对应产物，就切换为“agent 只传 ZIP + 远端 stat；父会话手动部署”。
 
 
+```plaintext
 Context:    项目背景、当前状态、前置条件
 Request:    要做什么，分步骤列清楚
 Output format:  期望的输出格式
@@ -120,7 +121,7 @@ Checkpoint: 完成标准 / 失败时的处理方式
 
 ### 接入本地模型
 
-Codex 可通过 `config.toml` 的自定义 OpenAI-compatible Provider 接入本地推理服务。官方配置形态包括：
+Codex 可通过 `config.toml` 的自定义 OpenAI 兼容 Provider 接入本地推理服务。官方配置形态包括：
 
 ```toml
 model = "<local-model-name>"
@@ -152,7 +153,7 @@ Codex Harness：Agent loop、工具、沙箱、审批、续跑与工程执行
 ```
 
 因此 Codex Harness 是生产型执行底座，不是 Robin 这类个人 Agent 助手的替代品；它更适合作为个人 Agent 的工程执行手臂。
-| Agent | Best For | NOT For |
+| Agent | 最适合 | 不适合 |
 |-------|----------|---------|
 | **Workbuddy + Kimi K3** | PRD 生成、文档编写、context 维护、**轻度前端改造** | 复杂 UI/交互开发 |
 | **反重力 (Antigravity)** | 修改已有页面、跨文件联动、新增组件+路由、砍文件/菜单、改配色/CSS | PRD/文档/context 编写 |
@@ -177,20 +178,20 @@ Codex Harness：Agent loop、工具、沙箱、审批、续跑与工程执行
 - **派工规则（0823 定稿）**：大批量、边界明确、重复性强的项目改造（ERP/WMS antd 迁移、文档批量生成）→ **Workbuddy**（非会员，只花攒的积分，暂不充值，等 vivo 限制确认）；复杂诊断/架构判断/最终审查 → **Codex**；UI 视觉收尾 → **Cursor**；快速原型 → **Gemini/反重力**；后端搭建 → **Opus**。
 - **Workbuddy 模式**：积分非会员，暂不充值；专门用于"任务已明确、目标页面和参照样板都存在"的批量执行。
 
-## New Project UI Rule (2026-07-29)
+## 新项目 UI 规则（2026-07-29）
 
 **新B端项目必须先问组件库,不准Tailwind手搓。** 反重力默认行为是 npm create vite + Tailwind纯手写 → UI不精致。
 
 React: AntDesign+ProComponents(稳重企业级) / Shadcn/UI(现代极简,源码拷贝) / ArcoDesign(字节紫色设计感)
 Vue: VbenAdmin(Shadcn/UI核心,可切AntDesignVue/ElementPlus/NaiveUI适配器) / ElementPlus原生(市场占有率最高)
 
-## Format Rules
+## 格式规则
 
-1. No emoji or icons. Plain text only.
-2. Output as single ```plaintext block.
-3. 红线禁止 must include "禁止 git commit 或 push".
-4. Checkpoint must distinguish WHO does WHAT and WHERE.
-5. VPS-side deployment only when user says "你部署下".
+1. 不用 emoji 或图标，只用纯文本。
+2. 输出为单个 ```plaintext 代码块。
+3. 红线禁止必须包含"禁止 git commit 或 push"。
+4. Checkpoint 必须分清：谁、做什么、在哪里。
+5. 只有用户说"你部署下"才做 VPS 侧部署。
 6. **git 指令铁律（2026-08-07 用户严厉纠正）：master 是收口分支，永远最后合并。** 给 agent 的任何 git 指令：
    - 禁止出现 `git push origin master` 直接推 master 的写法（除非用户单独明确要求）
    - "提交到 GitHub 并融合到 master"的指令必须写完整流程：开发分支（如 main/feat/*）commit → push 该分支 → 确认后 `git checkout master && git merge <分支> && git push origin master`
@@ -222,17 +223,17 @@ Vue: VbenAdmin(Shadcn/UI核心,可切AntDesignVue/ElementPlus/NaiveUI适配器) 
 
 22. **给 Mac zsh 的命令块禁止含 `#`（2026-09-19 实测）**：Mac zsh 默认 `interactive_comments` 关，命令里的 `#`（含行尾注释）会被当参数——`git pull origin main # 注释` → 报 `couldn't find remote ref #`；`&&` 串行 + 行尾注释最易翻车（`parse error near ')'`）。给用户整段粘贴的 shell 命令块**不要放任何 `#`**，注释放代码块外；单行一条命令，并优先用 `ln -sfn` / `mkdir -p` 等幂等命令保证可重复跑不报错。
 
-## Pre-Send Checklist
+## 发送前检查清单
 
 - [ ] **报障型指令：已排除层写进 Context（权限/服务/系统级验证结论），agent 只查剩余嫌疑段**——0827 实时语音案例：Context 里写明"后端代理正常/Chrome 权限 OK/采集成功"→ Codex 直接锁 AudioWorklet→WS 发送段一次定位（静默失败无 watchdog→ScriptProcessor 降级修复），没走弯路
 - [ ] **前端表单指令：name 命名红线已写入**（禁 style/name/title/action 等 HTML 原生属性名——0831 style 遮蔽 bug 3 轮才定位）
 - [ ] **部署验收证据固定三件套**：bundle hash 变化 + index.html 引用 + 新代码内容特征 grep（形式要对：React inline style 是 JS 形式 `maxWidth:720` 非 CSS）
-- [ ] Context / Request / Output format / 红线禁止 / Checkpoint — all five present
+- [ ] Context / Request / Output format / 红线禁止 / Checkpoint——五项齐全
 - [ ] git pull + ls 检查远程状态,不重复发已有内容
 - [ ] 新模块: 用例推演通过了吗? 没通过 → 不发前端指令
 - [ ] **多模块并行返修时: 检查指令里是否要求"只对自家模块自洽"——并行各 chat 不会对齐别的模块的契约,修完必现跨模块不一致(字段命名/状态枚举/金额来源/入口路径)。此时需在返修批次后追加一轮"跨模块契约对齐复核"指令(只读,列不一致清单),再发补修指令统一(以核心模块为基准)。0813 CRM 6 模块并行: 复核发现 8 项跨模块不一致 + 双目录并存(旧目录标"已废弃"而非删除)。**
 
-## Long-Goal Cost Discipline (Codex / Sol)当上游按请求次数、最低消费或重复上下文计费时，Sol 应采用“长目标、少轮次、完整闭环”：
+## 长目标成本纪律（Codex / Sol）当上游按请求次数、最低消费或重复上下文计费时，Sol 应采用“长目标、少轮次、完整闭环”：
 
 1. 第一轮只读审计，一次摸清代码、PRD、数据层、参照项目和业务边界。
 2. 第二轮实现指令一次给全 Context、范围、业务规则、红线、回归清单和 build 验证。
@@ -240,7 +241,7 @@ Vue: VbenAdmin(Shadcn/UI核心,可切AntDesignVue/ElementPlus/NaiveUI适配器) 
 4. 用户集中截图验收后，把多个问题合并为一轮返修。
 5. 成本评估记录任务前后余额、耗时、首轮完成度和返工次数；不要用反复询问模型身份等空跑测试。
 
-## Common Patterns
+## 常见模式
 
 ### 前端重构/换组件库指令：必须列"保留层"（2026-08-14 CRM Shadcn 重构实测）
 
@@ -317,7 +318,7 @@ Vue: VbenAdmin(Shadcn/UI核心,可切AntDesignVue/ElementPlus/NaiveUI适配器) 
 
 红线必须包含：不新建无关项目、不越出目标模块、不清理未提交改动、不 commit/push、不部署。若 `git status` 非空，只报告，不自行 reset/checkout/clean。
 
-### Compile-only (no code changes):
+### 仅编译（不改代码）：
 ```plaintext
 Context: forge-erp 前端，React + TypeScript + Vite。
 Request: cd front-prototype && npm run build → 打包 dist.zip
@@ -325,7 +326,7 @@ Request: cd front-prototype && npm run build → 打包 dist.zip
 Checkpoint: 编译成功→发dist.zip; 编译失败→只报错误
 ```
 
-### Migrate Existing Pages to Ant Design (反重力):
+### 已有页面迁移到 Ant Design（反重力）：
 ```plaintext
 Context: forge-erp front-prototype/下已完成基础资料模块antd迁移。
 参照已改好的SupplierList.tsx模式，不新建项目。
@@ -483,14 +484,14 @@ Checkpoint: build后 strings检查 basename出现次数=1 → 发dist
 5. **判断标准一句话**：让 agent"读文件/查库"，而不是"把文件内容塞给它"。上下文只放当前这步要用的少量信息，大的东西让它去文件里读。
 6. **止损**：一旦发现会话已到几十万 token（如 5 位数 token 起步的巨型会话 + 回复明显变慢），**别救，直接 /new**——地基/知识库/文档都在文件里不会丢，新开会话按模块小步重来比在巨型上下文里挣扎强。
 
-## Pitfalls
+## 常见踩坑
 
-| Pitfall | Symptom | Fix |
+| 踩坑 | 症状 | 解法 |
 |---------|---------|-----|
 | **Codex 沙箱默认禁网（2026-08-26 实测）** | 指令里给了 curl 上传/rsync 命令，Codex 执行报 `curl: (6) Could not resolve host`（--noproxy '*' 也无效）；用户 Mac 手动 curl 却 200 | Codex CLI `workspace-write` 沙箱默认 `network_access = false`（DNS 都不通）。修复：Mac `~/.codex/config.toml` 加 `[sandbox_workspace_write] network_access = true`；审批 503 再加 `approval_policy = "on-request"`。兜底：沙箱受限时让 agent 把报告存 check-reports/ + git 提交，由杰西卡 VPS 侧补传管道（见 ai-artifact-pipeline 技能） |
 | **Agent 新建项目而非改已有项目** | 反重力/Codex忽略当前可运行代码，另起脚手架 | 指令第一行写明目标项目和“修改现有项目，不创建新项目”；红线加“禁止 npm create vite/重建脚手架/更换技术栈” |
 | **回退后立即梭哈改造** | 不清楚真实基线就批量改，重新引入已回退的问题 | 先只读审计 git 基线、路由、页面和数据层；选单个样板对象，小范围验收后再推广 |
-| **SPA 部署 blank page** | nginx 200 但空白 — basename + base href + nginx alias 不一致 | 见 references/spa-deploy-check.md |
+| **SPA 部署白屏** | nginx 200 但空白 — basename + base href + nginx alias 不一致 | 见 references/spa-deploy-check.md |
 | **SPA 运行时空白页（渲染崩，2026-08-13 ERP 实测）** | 点击菜单→全白；nginx 200/bundle 加载/Dexie 正常；root 空+React 未挂载；console 只有空 message exception | 渲染期同步数据调用抛错（如初始订单引用已迁移的旧商品编码→getSalesOrders 校验 throw→整树卸载）。诊断见 references/spa-runtime-blank-page.md：正常页注入错误监听器→SPA 内部导航触发崩溃页→读 window.__errs 拿真实错误消息+堆栈（不要直接 navigate 到崩溃 URL——刷新清监听器） |
 | **子路径部署白屏：index.html 里 /assets/ 绝对路径（2026-08-11 jarvis 实测；2026-08-20 回滚重打包复发）** | Vite build 产物 index.html 引用 `src=\"/assets/index-*.js\"`（绝对路径指向站点根）——部署到子路径 `/agent/jarvis/` 或 `/jarvis-voice/` 时浏览器请求 `/assets/...`（根）→ 加载错文件/404 → 白屏（title 对但内容空）。**2026-08-20 复发场景**：git `restore` 回滚今日改动（无 commit，全是工作区改动）→ 重新 `npm run build` 打包 v157 → **手动部署零改动的 dist** → 又白屏。**复发原因 = 重新打包的 zip 里的 index.html 仍是绝对 `/assets/`，且手动部署不做 deploy-all 内嵌 python 的相对路径替换**。 | deploy-all.sh 内嵌 python 会自动把 `href=\"/assets/` 和 `src=\"/assets/` 替换成 `./assets/`（相对路径）——但**手动 unzip 部署 / 用户重打包后手动部署不会做这步**。手动部署后必须: `python3 -c \"c=open('index.html').read(); open('index.html','w').write(c.replace('href=\\\"/assets/','href=\\\"./assets/').replace('src=\\\"/assets/','src=\\\"./assets/'))\"`。验证: `curl <url> | grep -o 'src=\\\"[^\\\"]*\\\"'` 应为 `./assets/...` 而非 `/assets/...`。**通用教训**：任何\"重打包零改 dist 再手动部署\"（回滚、改后缀重压、本地导出）都可能带来绝对路径白屏——若页面白屏但 HTTP 200 + root 空，第一嫌疑就是 index.html 里资源路径是绝对 `/assets/`，检查 `curl 页面 | grep src=`；手动部署完必须跑一次相对路径替换，不能假设重打包保留了相对路径。 |
 | **Vite缓存导致basename不生效** | build后JS文件名变但内容未变,basename仍是旧值 | `rm -rf dist node_modules/.vite && npm run build` |
