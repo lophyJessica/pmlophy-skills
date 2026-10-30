@@ -1,0 +1,557 @@
+:root {
+  --vpa-blue: #1890ff;
+  --vpa-blue-hover: #40a9ff;
+  --vpa-blue-active: #096dd9;
+  --vpa-blue-bg: #e6f7ff;
+  --vpa-blue-border: #91d5ff;
+}
+
+/* 标注区域：始终显示，不依赖 body.vpa-mode-annotate */
+body.vpa-mode-annotate [data-anno]:not([data-anno='friends-page']) {
+  position: relative;
+  outline: 2px dashed var(--vpa-blue);
+  outline-offset: 4px;
+  background-image: linear-gradient(180deg, rgb(230 247 255 / 88%), rgb(230 247 255 / 28%));
+}
+
+.vpa-badge {
+  width: 22px;
+  height: 22px;
+  padding: 0 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+  background: var(--vpa-blue) !important;
+  color: #fff !important;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgb(24 144 255 / 35%);
+}
+
+.vpa-floating-entries {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  bottom: auto;
+  left: auto;
+  z-index: calc(var(--vpa-z-base, 9997) + 30);
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  transform: translateY(-50%);
+  pointer-events: auto;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+}
+
+.vpa-entry,
+.vpa-panel-toggle {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 108px;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--vpa-blue-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--vpa-blue-active);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgb(24 144 255 / 16%);
+  pointer-events: auto;
+}
+
+.vpa-entry svg,
+.vpa-panel-toggle svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.vpa-entry:hover,
+.vpa-panel-toggle:hover {
+  border-color: var(--vpa-blue-hover);
+  background: var(--vpa-blue-bg);
+  color: var(--vpa-blue);
+}
+
+.vpa-entry.is-active,
+.vpa-panel-toggle.is-active {
+  border-color: var(--vpa-blue-active);
+  background: var(--vpa-blue-active);
+  color: #fff;
+}
+
+.vpa-panel {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: calc(var(--vpa-z-base, 9997) + 20);
+  display: flex;
+  flex-direction: column;
+  width: min(520px, calc(100vw - 40px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid var(--vpa-blue-border);
+  border-radius: 12px;
+  background: #fff;
+  color: #1f2937;
+  box-shadow: 0 18px 48px rgb(24 144 255 / 18%);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+}
+
+.vpa-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #e6f7ff;
+  background: linear-gradient(180deg, #f7fbff, #fff);
+}
+
+.vpa-panel-title-row {
+  display: flex;
+  flex: 1 1 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap;
+}
+
+.vpa-panel-title-row > div:first-child {
+  min-width: 0;
+}
+
+.vpa-panel-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--vpa-blue-active);
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.vpa-panel-count,
+.vpa-card-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--vpa-blue);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.vpa-panel-subtitle {
+  margin-top: 4px;
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.vpa-panel-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.vpa-panel-close {
+  flex: 0 0 auto;
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--vpa-blue-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--vpa-blue-active);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 26px;
+  white-space: nowrap;
+}
+
+.vpa-panel-close {
+  border-color: var(--vpa-blue-border) !important;
+  color: var(--vpa-blue-active) !important;
+}
+
+.vpa-panel-tabs,
+.vpa-detail-tabs {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.vpa-panel-tabs {
+  padding: 8px 0;
+}
+
+.vpa-panel-tab,
+.vpa-detail-tab {
+  border: 0;
+  background: transparent;
+  color: #8c8c8c;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.vpa-panel-tab {
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+
+.vpa-detail-tab {
+  padding: 6px 8px 4px;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+}
+
+.vpa-panel-tab:hover,
+.vpa-detail-tab:hover {
+  color: var(--vpa-blue);
+  background: var(--vpa-blue-bg);
+}
+
+.vpa-panel-tab.is-active {
+  background: var(--vpa-blue);
+  color: #fff;
+}
+
+.vpa-detail-tab.is-active {
+  background: transparent;
+  color: var(--vpa-blue-active);
+  border-bottom-color: var(--vpa-blue);
+  font-weight: 700;
+}
+
+.vpa-panel-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(100vh - 180px);
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.vpa-card {
+  margin-bottom: 8px;
+  border: 1px solid #e6f4ff;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.vpa-card-main {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  gap: 8px;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  color: #1f2937;
+  cursor: pointer;
+  text-align: left;
+}
+
+.vpa-card-main:hover {
+  background: var(--vpa-blue-bg);
+}
+
+.vpa-card-copy {
+  min-width: 0;
+}
+
+.vpa-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #1f2937;
+  font-size: 13px;
+}
+
+.vpa-type-tag {
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: var(--vpa-blue-bg);
+  color: var(--vpa-blue-active);
+  font-size: 10px;
+}
+
+/* 所属状态标签：标明该标注属于页面的哪个状态（列表页 / 弹窗 / 向导某步），
+   避免评审看不出这块标注要点什么操作才能看到。 */
+.vpa-scope-tag {
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  color: #389e0d;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+/* 当前页面上找不到挂载元素的块：仍然列出说明，但提示需要先做操作。 */
+.vpa-reach-tag {
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  color: #d48806;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.vpa-card.is-unreachable .vpa-card-number {
+  background: #fffbe6;
+  color: #d48806;
+  border-color: #ffe58f;
+}
+
+.vpa-card-summary {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #8c8c8c;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vpa-card-expand,
+.vpa-popup-expand {
+  width: 100%;
+  padding: 6px 10px;
+  border: 0;
+  border-top: 1px solid #f0f5ff;
+  background: transparent;
+  color: var(--vpa-blue);
+  cursor: pointer;
+  font-size: 12px;
+  text-align: left;
+}
+
+.vpa-card-details {
+  display: none;
+  padding: 0 10px 10px;
+}
+
+.vpa-card-details.is-open {
+  display: block;
+}
+
+.vpa-detail-tabs {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+}
+
+.vpa-popup-details.is-open {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+
+.vpa-detail-tab-panel {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.vpa-popup {
+  overflow: hidden;
+  border: 1px solid var(--vpa-blue-border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 16px 40px rgb(24 144 255 / 22%);
+}
+
+.vpa-popup-header {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+  background: var(--vpa-blue);
+  color: #fff;
+}
+
+.vpa-popup-header strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 14px;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vpa-popup-header .vpa-close {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid #fff;
+  border-radius: 6px;
+  background: var(--vpa-blue-active);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 24px;
+  white-space: nowrap;
+}
+
+.vpa-badge-static {
+  display: inline-flex;
+  flex: 0 0 22px;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: var(--vpa-blue-active);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.vpa-popup-body {
+  height: calc(100% - 46px);
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  overflow: auto;
+  background: #fff;
+}
+
+.vpa-table-wrap th {
+  background: var(--vpa-blue-bg);
+  color: var(--vpa-blue-active);
+}
+
+.vpa-pending-compose {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.vpa-pending-block-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid var(--vpa-blue-border);
+  border-radius: 8px;
+  background: #f8fbff;
+}
+
+.vpa-pending-new-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--vpa-blue);
+  border-radius: 6px;
+  background: #fff;
+  color: #1f2937;
+}
+
+.vpa-pending-new-input:focus {
+  outline: none;
+  border-color: var(--vpa-blue);
+  background: var(--vpa-blue-bg);
+}
+
+.vpa-pending-add {
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--vpa-blue);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.vpa-pending-add:hover {
+  background: var(--vpa-blue-hover);
+}
+
+.vpa-pending-block-export {
+  align-self: flex-end;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--vpa-blue-border);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--vpa-blue-active);
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.vpa-pending-block-export:hover {
+  border-color: var(--vpa-blue);
+  background: var(--vpa-blue-bg);
+}
+
+.vpa-pending-count {
+  margin: 8px 0;
+  color: #595959;
+  font-size: 12px;
+}
+
+.vpa-pending-issue-list {
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.vpa-pending-issue {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.vpa-pending-empty {
+  padding: 16px 8px;
+  color: #8c8c8c;
+  font-size: 12px;
+  text-align: center;
+}
+
+.vpa-toast {
+  background: var(--vpa-blue-active);
+}
