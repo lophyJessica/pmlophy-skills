@@ -80,6 +80,7 @@ description: 编写评审PRD交付档：主PRD+Demo+原型标注合一成自包�
   ```
   python3 <skill>/scripts/deliver.py <评审PRD源稿.md> [--prev 上一版发布版.md]
   ```
+- 做负向测试（故意藏图/注入旧口径）验它拦不拦得住时，**必须加 `--output /tmp/xxx.md`**，否则它会往正式发布版写入残次品（2026-10-31 已踩：缺图时覆盖了正式发布版）。脚本现已改成先写 `.tmp`、三项自检全过才落地，自检失败不动原文件，但仍应用 /tmp 路径做实验。
 - 交付一律**在线预览**（导入语雀/Confluence），不打包zip、不发原文md。
 - 用项目里的 `09-脚本工具/embed_images.py`（或本 skill 脚本 `scripts/embed_images.py`）把 md 里 `![](./images/x.png)` 替换成 `data:image/png;base64,...` 生成自包含发布版(`{名}-发布版.md`)，导入任何平台路径不断、图可放大。
 - 仓库维护用引用版(md + images/)，发布版只在交付时生成。发布版里有 base64 码是正常的，别直接读md，用渲染器看。
