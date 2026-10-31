@@ -9,6 +9,10 @@ trigger:
 
 # A2A Instruction Format (五段式)
 
+## 沙箱限制：Codex 起不了 dev server，验收写 ego lite
+
+Codex CLI 的 workspace-write 沙箱禁止本地端口监听（Vite 返回 `EPERM`），**换端口无效**——这是 sandbox 策略不是系统权限。派「浏览器验收」任务时：dev server 由用户在终端自己起，agent 不许尝试启动或绕过；验收改用 ego lite（独立 Mac 应用，不走 Codex 沙箱），指令写明「先执行 `ego-browser skill` 看用法」。ego lite 报 `Failed to start ego lite / retry with Full Access` 时让用户在应用里给足权限。另外 agent 的 skill 目录要定期对库：`comm -23 <(ls 库/skills|sort) <(ls ~/.codex/skills|sort)` 应为空，缺链逐条 `ln -sfn` 补。
+
 ## 原型/前端类指令：必带的两条（2026-10-23 用户定，漏了会被当场指出）
 
 > **实现指令里夹带的 UI 数值会被写进 PRD（实测，用户当场崩「为什么prd的交互说明写UI规范啊」）**：给 agent 派「做某交互 + 回写文档」类活时，指令里列的尺寸/色值/字号/字重/圆角会被照抄进 PRD 的【交互说明】。写数值时**必须紧接一句「这些只用于实现，不许写进文档；文档只写行为」**——不写这句，交付回来的 PRD 就带着 62×32px / #E9EAF1 / 700 这种设计规格，得重做一遍。自查：交付验收时 grep 主 PRD 里 `px`、`#[0-9A-Fa-f]{6}`、`字重`、`圆角`，应为 0。
