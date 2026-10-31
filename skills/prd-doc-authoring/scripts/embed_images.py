@@ -12,7 +12,7 @@ def embed(md_path, out_path):
 
     def repl(m):
         alt, path = m.group(1), m.group(2)
-        full = os.path.join(base, path)
+        full = os.path.join(base, "images", path)
         if not os.path.isfile(full):
             print(f"[跳过] 缺失图片: {path}", file=sys.stderr)
             return m.group(0)
