@@ -123,6 +123,7 @@ def main():
 
     stem = os.path.splitext(md)[0]
     out = os.path.abspath(a.output) if a.output else stem + "-发布版.md"
+    out_tmp = out + ".tmp"
     prev = a.prev
     if prev is None and os.path.isfile(out):
         prev = out
@@ -163,23 +164,23 @@ def main():
         if unused:
             warns.append(f"images 目录有 {len(unused)} 张未被引用")
 
-    # 3 重生成发布版
+    # 3 重生成发布版（先写 .tmp，自检全过才落地；FAIL 时原有发布版不被破坏）
     print(f"== 3 重生成发布版 → {out}")
     embed = os.path.join(HERE, "embed_images.py")
-    r = subprocess.run([sys.executable, embed, md, "--output", out], capture_output=True, text=True)
-    sys.stdout.write(r.stdout)
+    r = subprocess.run([sys.executable, embed, md, "--output", out_tmp], capture_output=True, text=True)
+    sys.stdout.write(r.stdout.replace(out_tmp, out))
     sys.stderr.write(r.stderr)
     if r.returncode != 0:
         fails.append("embed_images 失败")
-        print("  结果: FAIL 重生成失败")
+        print("  结果: FAIL 重生成失败，原有发布版未改动")
         return report(fails, warns)
 
     # 4 三项自检
-    with open(out, encoding="utf-8") as f:
+    with open(out_tmp, encoding="utf-8") as f:
         pub = f.read()
     n_base64 = pub.count("base64,")
     residue = pub.count("images/")
-    size = os.path.getsize(out)
+    size = os.path.getsize(out_tmp)
     print("== 4 三项自检")
     ok1 = n_base64 == len(refs)
     print(f"  ① base64 图数 {n_base64} vs 引用 {len(refs)} → {'PASS' if ok1 else 'FAIL'}")
@@ -199,7 +200,14 @@ def main():
     else:
         print(f"  ③ 字节数 {size // 1024} KB（无上一版可比，跳过）")
 
-    return report(fails, warns)
+    code = report(fails, warns)
+    if code == 0:
+        os.replace(out_tmp, out)
+        print(f"  已落地: {out}")
+    else:
+        os.remove(out_tmp)
+        print("  未落地: 自检未过，原有发布版保持原样（临时文件已删除）")
+    return code
 
 
 def report(fails, warns):
