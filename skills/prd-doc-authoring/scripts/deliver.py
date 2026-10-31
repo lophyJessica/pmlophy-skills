@@ -190,7 +190,7 @@ def main():
     print(f"  ② 相对路径残留 {residue} → {'PASS' if ok2 else 'FAIL'}")
     if not ok2:
         fails.append(f"发布版残留 images/ 相对路径 {residue} 处")
-    if prev and os.path.isfile(prev) and os.path.abspath(prev) != out:
+    if prev and os.path.isfile(prev) and os.path.abspath(prev) != out_tmp:
         drop = (os.path.getsize(prev) - size) / os.path.getsize(prev) * 100
         ok3 = drop <= a.allow_drop
         print(f"  ③ 字节数 {size // 1024} KB vs 上一版 {os.path.getsize(prev) // 1024} KB，变化 {drop:+.1f}% → "
