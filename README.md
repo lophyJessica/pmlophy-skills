@@ -4,6 +4,17 @@
 
 ## 当前 Skill
 
+### `agent-skills-library`
+
+维护这套跨 agent 技能库本身：新增/迁移/软链 skill，Windows 逐 skill Junction 与 Mac 软链的机制差异，pull 之后该不该跑 `sync-skills-windows.bat`，第三方 skill 与备份目录怎么处置，以及 Hermes 侧技能与 `pmlophy-skills` 库之间的同步纪律。
+
+特点：
+
+- 同步先问平台：Mac 上 pull 即生效，Windows 上要先判 skill 目录有没有增删改名，不能无脑跑脚本；
+- 跑脚本前先说清副作用：它拆链重建并留下 `.backup-*` 残留，不是幂等操作；
+- 别拿字节数判副本：Windows 检出会把 LF 转 CRLF，同一文件比 VPS 多出「行数个字节」；
+- 给 agent 的 skill 路径一律写中枢（`\.agents\skills`），不写真源库、也不写项目内副本。
+
 ### `pm-to-questionnaire`
 
 把“我缺少某个人掌握的事实或决策信息”转化为可发给对方填写的结构化问卷，适用于业务调研、入职摸底、跨团队沟通和访谈准备。
