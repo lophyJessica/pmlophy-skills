@@ -149,6 +149,9 @@ for s in ~/个人文件/pmlophy-skills/skills/*/; do n=$(basename "$s"); if [ ! 
 - **skill 要接进指令入口才不是摆设**：五段式指令生成前先扫 skill 库匹配（见 a2a-instruction-format「Skill 路由：先扫后用」），命中就让 agent 先加载 skill。
 - 新增 skill 后软链给 agent，用户才读得到；只 push pmlophy-skills 而 agent 没软链 = 白做。
 - **时机要前置到「派活前」，不是「改完 skill 后」**（2026-11-04 用户定为铁律）：每次要派本地 agent（Cursor / Codex / 反重力 / Qoder）干活，发指令之前先过这三问——①这活要用的 skill 在库里有吗，没有就先补进库并 push；②各 agent 目录链过去了吗，跑一遍遍历看 `<base>/<skill>/SKILL.md` 在不在，不许凭印象；③两边是否已分叉，分叉就做定点 patch 而不是直接覆盖。缺一条，指令发出去 agent 也读不到该读的规矩。
+- **判「链通没通」不能用 `Test-Path $link`，要用能不能读到里面的文件**（2026-11-04 实测踩坑）：Windows 的 junction 断链（目标路径已不存在）时，`Test-Path` 仍返回 True，于是「存在但读不到」的坏链被当成已建好、全量跳过、不修。正确判据是 `Test-Path (Join-Path $link "SKILL.md")`；判定为断链后先 `cmd /c rmdir "$link"` 只删链接（不要用 `Remove-Item -Recurse`，它会顺着链删掉目标内容），再 `New-Item -ItemType Junction` 重建。实测 antigravity 目录里 19 条老链全指向已不存在的路径，就是靠这个判据才揪出来的。
+- **`skills/ai-coding` 是分类目录，根目录没有 SKILL.md**（下挂 grill-me / react-best-practices / simplify / taste-review / test-desktop-app 五个）。写遍历自检脚本时要按「目标目录下有没有 SKILL.md」过滤掉它，否则每次都会误报「缺 ai-coding」。期望值算法：真源目录数减去这类分类目录数（当前 24 减 1 等于 23）。
+- **`sync-skills-windows.bat` 不是幂等操作**：它每次都把已存在的条目 move 成 `.backup-<随机数>` 再重建，反复跑会攒出一大堆残留（实测 cursor 20 个、codex 21 个、antigravity 42 个）。只在 skill 目录有增删改名时才值得跑整份；日常补一两个新 skill，用 mklink 逐条补、跑不通再修，比整份重建干净。
 - **实测缺失的 agent 目录要如实报**：Mac 上 `~/.gemini/config/skills`、`~/.zcode/skills` 当前不存在，反重力与 ZCode 读不到任何 skill；建链脚本会按 `[ -d ]` 跳过它们，输出里少了哪几行要自己看出来并告诉用户，别把「6 个目录 OK」当成全都覆盖到了。
 - **push 前先 `git pull --rebase`**：pmlophy-skills 常被多处更新（Mac 端、本机），直接 push 会被远程领先拒绝（rejected）。有未提交改动时先 commit/stash 再 rebase，rebase 类纯新增 skill 无冲突。
 
