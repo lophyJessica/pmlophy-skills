@@ -148,6 +148,8 @@ for s in ~/个人文件/pmlophy-skills/skills/*/; do n=$(basename "$s"); if [ ! 
 - **给用户的验证命令，关键词要从文件实际内容里 grep 出来，不能凭记忆写。**凭印象拼的关键词（少一个字、多一个助词）会命中 0，而 0 命中看起来像“没同步”，于是白排查一轮。正确做法：先在词内文本上跑一遍取到真实字串，再把它写进给用户的命令；或者直接让用户验证一个必存在的短词（如列名、节标题），不验证自己新写的那句话。
 - **skill 要接进指令入口才不是摆设**：五段式指令生成前先扫 skill 库匹配（见 a2a-instruction-format「Skill 路由：先扫后用」），命中就让 agent 先加载 skill。
 - 新增 skill 后软链给 agent，用户才读得到；只 push pmlophy-skills 而 agent 没软链 = 白做。
+- **时机要前置到「派活前」，不是「改完 skill 后」**（2026-11-04 用户定为铁律）：每次要派本地 agent（Cursor / Codex / 反重力 / Qoder）干活，发指令之前先过这三问——①这活要用的 skill 在库里有吗，没有就先补进库并 push；②各 agent 目录链过去了吗，跑一遍遍历看 `<base>/<skill>/SKILL.md` 在不在，不许凭印象；③两边是否已分叉，分叉就做定点 patch 而不是直接覆盖。缺一条，指令发出去 agent 也读不到该读的规矩。
+- **实测缺失的 agent 目录要如实报**：Mac 上 `~/.gemini/config/skills`、`~/.zcode/skills` 当前不存在，反重力与 ZCode 读不到任何 skill；建链脚本会按 `[ -d ]` 跳过它们，输出里少了哪几行要自己看出来并告诉用户，别把「6 个目录 OK」当成全都覆盖到了。
 - **push 前先 `git pull --rebase`**：pmlophy-skills 常被多处更新（Mac 端、本机），直接 push 会被远程领先拒绝（rejected）。有未提交改动时先 commit/stash 再 rebase，rebase 类纯新增 skill 无冲突。
 
 ## 语言与结构整理（全库中文化/去重的实做顺序）
