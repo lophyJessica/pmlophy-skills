@@ -135,6 +135,20 @@ for s in ~/个人文件/pmlophy-skills/skills/*/; do n=$(basename "$s"); if [ ! 
 
 **同一个 skill 在 agent 里出现两份（输入 `/xxx` 弹出两个一模一样）**：不是 agent 的 bug，是同一份 skill 被两处目录同时扫到。最常见是**项目目录里残留副本**（历史上把 skill 复制/软链进过项目，如 `E:\projects\cms-project\.agents\skills\`），与用户级 Junction 各算一份。自查：`dir /b "<项目>\.agents\skills"` 与 `dir /b "C:\Users\<user>\.cursor\skills"` 各列一遍，名字重复即坐实。修法=**只删项目内那份 skill 副本、保留 `.agents` 目录本身**，让 agent 只读用户级一份；删前把清单复述给用户确认。先查项目级、再怀疑用户级重复注册。
 
+## 待同步台账（Windows 公司机 / Mac 个人机）
+
+**每次 VPS 往仓库 push 了 skill，当场在看板 Todo 里记一条待同步**，写明提交号、哪一侧、要做什么；用户 pull 完自检通过再划掉。理由是两侧不会自动更新——VPS 上的 Hermes 技能库、公司的 Windows 库、Mac 的库是三份独立检出，我在 VPS 改完 push 只是让它们「可以」更新，不等于「已经」更新（2026-11-04 用户要求：记录好两侧待同步，前置做好避免返工）。
+
+按工作量分三种，别一律当成要跑脚本：
+
+| 情形 | 需要做的事 |
+|---|---|
+| 只改内容（改 SKILL.md、加 references/scripts） | **只需 `git pull`**。Junction / 软链指向的是目录本身，内容会自动跟随，不用重建链接 |
+| 新增 skill 目录 | pull 之后逐条建链（Windows `mklink /J`、Mac `ln -sfn`），再跑自检 |
+| 删除或改名 skill | pull 之后清残留链。**先把残留名报给用户，不自动删** |
+
+派本地 agent 干活之前，先查这条台账有没有未清的项——没清干净，agent 读到的还是旧规矩。
+
 ## 关键纪律
 - **SKILL.md 的 `description` 写中文**：这个字段决定 skill 什么时候被触发，也是引用给人看的第一句。英文 description 在中文对话里常常不命中（用户用中文喊活，skill 不上），引用时也看不出用途。写法：首句是自包含的「当要……时用」+ 一句行为；**技术专名保留英文不译**（data-anno、routeMatcher、SKILL.md、React / Next.js 这类）。只改 description，正文照原语言不动——除非用户明确要求整篇中文化。
   批量盘：`grep -rn "^description:" skills/`，一眼看出哪些还是英文；改完再 grep 一遍确认清零。
