@@ -134,6 +134,8 @@ description: Use when 做内外销/跨地区功能差异对比（导购端、商
 
 1 **路由表**：内销 qywx-h5、外销 global-guide 各一份，四列 `路由完整path | name | 页面名(meta.title) | 组件文件路径`，嵌套路由展开；另出「未挂载页面」。**只做 JOIN 键，不进 32 列**。内销源码 Mac 上也有，交本地 agent 跑。
 
+   **状态：第一步已完成（2026-11-04）**。产物在 `code-source/内外销梳理/`：路由表-内销-qywx-h5.tsv（89 行）、路由表-外销-global-guide.tsv（17 行）、路由表-外销-titleKey对照.tsv（14 行）、未挂载页面.tsv（7 行）、路由表-容器与重定向.tsv（4 行）、路由表-页面名匹配率.md。独立复核过的基线：内销 26 个已挂载模块共 89 条 path、87 条带 component，加 index.js 的 /404 与 /notsupport 共 89 条有组件路由，无组件的只有 /cards 与 /qc-report。页面名匹配（口径：去括号后相等=精确；前缀包含或连字符后半段相等=宽匹配）：内销 66 页 精确 34 / 宽匹配 26 / 不中 6；外销 17 页 精确 10 / 宽匹配 3 / 不中 4。那 6 个不中的是源码 meta.title 缺失或写错（门店地址采集 4 个子页有 3 条都写成「确认门店信息」），不是匹配算法问题。
+
    路由表这一步有三件事必须写进指令，漏了返工：
    - **先核版本**：global-guide 线上曾跑 1.8.0.2 而 master 停在 v1.5.0。注意 code-source 里的 `内销/前端/qywx-h5`、`外销/前端/global-guide` 都**不是独立 git 仓库（没有 .git），是搬进来的源码快照**，没有分支历史可核——指令里别写「切到版本号最大的分支」，改成「报 package.json version + 快照里能找到的版本线索（doc 目录的概设文档名、CHANGELOG）」并让 agent 如实报。实测外销那份 package.json 写 1.0.0，与线上 1.8.0.2 不符，快照版本存疑，取数前先确认。
    - **外销页面名静态扫不出中文**：global-guide 的 `meta.title` 全是英文（Voucher Details / User Management / Order List…），中文名靠 `meta.titleKey` 去多语言包（store.lan）里取。所以外销路由表的「页面名」列拿不到中文，只能用英文 title + titleKey。要和内销中文页面名做 JOIN，必须另配一份 titleKey→中文 的多语言词表，或改用 titleKey 当连接键。
