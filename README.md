@@ -103,6 +103,16 @@
 
 评审PRD变更回写权威源。靠 `scripts/diff_backfill.py` 对比评审PRD vs 权威源（字段清单/主PRD）输出三层待回写清单（确定差异/需人工确认/一致），以评审PRD为主回写覆盖，回写后重跑 diff 校验。内置字段别名归一、来源降噪、必填归一，避免把"表述不同"误判成本质差异。与 prd-backfill（代码→PRD）方向相反。
 
+## 内外销与私域取数
+
+### `cross-market-feature-diff`
+
+内外销/跨地区功能差异对比。内销做基准（源码取证出 1136 行），外销只回答「有没有、差在哪」。含 32 列主表口径（内销 5 列 + 印度/印尼/西班牙/巴西各 6 列）、区域按合规标准分组（印度单列、普外、GDPR 下再分欧洲与拉美）、四步推进法（路由表 → 超管权限矩阵 → 组主表 → 分层真机），以及「矩阵判没有即采信、只上三类真机」的省力规则。附 `scripts/verify_feature_tsv.py` 做交付校验。
+
+### `vivo-private-domain-monthly`
+
+外销私域月度盘点取数（留存用户 / 导入用户 / 私域导购数三项口径）。含四战区层级（东南亚 / 海外直营 / 南亚 / 非洲，合计 13 国、不切战区取不到数）、好友列表与 Whats账号列表的页面限制（无添加时间筛选、好友列表本身即未删除数据、导购数需两个页签相加），以及 2026 年 9 月起的历史基线。
+
 ## AI Coding Skills（`skills/ai-coding/`）
 
 5 个 AI Coding Skill，用于给 Codex / 反重力 / Cursor 等编码 agent 更稳的工作流。来自上游开源仓库（grill-me / react-best-practices / taste-review / simplify / test-desktop-app），test-desktop-app 按用户笔记自建为通用版。
