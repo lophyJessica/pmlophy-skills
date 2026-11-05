@@ -130,6 +130,11 @@ description: Use when 做内外销/跨地区功能差异对比（导购端、商
 
 **`code-source` 仓库，路径 `内外销梳理/`**。不放 cms-project（那是 PRD/原型文档项目）。产出三份：32 列主表、路由表、权限矩阵导出。
 
+三台机器上的实际路径（2026-11-05 用户改过目录名，别再写旧名「源码管理」）：
+- 公司机 Windows：`E:\projects\code-source`
+- Mac：`/Users/liulongfei/个人文件/WorkSpace/vivo/code-source`
+- VPS 镜像：`/root/repos/code-source`
+
 ### 四步走
 
 1 **路由表**：内销 qywx-h5、外销 global-guide 各一份，四列 `路由完整path | name | 页面名(meta.title) | 组件文件路径`，嵌套路由展开；另出「未挂载页面」。**只做 JOIN 键，不进 32 列**。内销源码 Mac 上也有，交本地 agent 跑。
