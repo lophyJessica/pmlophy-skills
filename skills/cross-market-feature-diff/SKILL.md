@@ -92,6 +92,7 @@ description: Use when 做内外销/跨地区功能差异对比（导购端、商
 
 ## 四、坑
 
+- **package.json 的 version 字段不可信**，它常被忘记同步。判定一份源码是不是最新版，看三个信号：①关键新功能文件（当下版本才有的页面/组件）的最后提交日期是否落在近期；②路由条数是否与线上菜单对得上；③doc 目录里概设文档的版本号。实测外销 global-guide：package.json 写 1.0.0，但 orderList / verify / activityShare 等预售功能文件都是最新提交，代码实为 1.8.0.2。仅凭 version 字段就下「源码是旧版」的结论会误报。
 - **原型 ≠ 现状**。原型是设计方案，可能包含还没落地的页面。用原型当「外销现状」会把规划算成存量，给领导的结论直接错。
 - **源码版本必须先核对**。查 `package.json` version + 最近提交日期；分支停在几个月前就要怀疑，别拿旧代码下结论。核对方法：仓库文件列表的 Last commit、`git branch -r --sort=-committerdate`。
 - **有的团队用版本分支开发、master 根本不合并**（vivo 外销 global-guide 实测：master 停在 v1.5.0，线上跑 1.8.0.2，中间隔四代）。这类仓库按 master 取源码等于取了个古董。规矩：①先看 GitLab 的 Switch branch/tag 列表，找版本号最大的分支；②确认它对应线上哪一版（问研发或看部署记录）；③取完先数路由条数，跟线上菜单对不上就是取错了。
