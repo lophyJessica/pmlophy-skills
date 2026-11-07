@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<!--
+  动效页骨架：时间轴版。
+  用法：改 EVENTS 数组（时间、事件名、标签、上下位置）与 SPAN_TXT / CONCL。
+  渲染全部由 renderFrame(sec) 纯函数决定——不要改成 CSS transition，那样无法停帧。
+-->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1920px; height:1080px; overflow:hidden;
+    background:radial-gradient(ellipse at 20% 0%, #1a2332 0%, #0b0f16 60%, #06080c 100%);
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif; color:#e6edf7; }
+  #stage { position:relative; width:1920px; height:1080px; }
+  .title-wrap { position:absolute; left:120px; top:88px; }
+  .title-wrap h1 { font-size:56px; font-weight:600; letter-spacing:2px;
+    background:linear-gradient(90deg,#5ee7df,#66a6ff); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent; opacity:0; }
+  .title-wrap p { margin-top:18px; font-size:26px; color:#7c8ba1; letter-spacing:1px; opacity:0; }
+  .axis-area { position:absolute; left:120px; right:120px; top:400px; height:340px; }
+  .axis-line { position:absolute; left:0; right:0; top:150px; height:2px; background:rgba(120,150,200,0.18); }
+  .axis-progress { position:absolute; left:0; top:150px; height:2px; width:0;
+    background:linear-gradient(90deg,#5ee7df,#66a6ff); box-shadow:0 0 18px rgba(94,231,223,0.75); }
+  .node { position:absolute; top:150px; transform:translate(-50%,-50%); }
+  .node .dot { width:20px; height:20px; border-radius:50%; background:#1b2634;
+    border:2px solid #2c3a4d; margin:0 auto; }
+  .node.on .dot { background:#5ee7df; border-color:#5ee7df;
+    box-shadow:0 0 22px rgba(94,231,223,0.9),0 0 44px rgba(94,231,223,0.45); }
+  .node .lbl { position:absolute; left:50%; transform:translateX(-50%); width:220px;
+    text-align:center; opacity:0; }
+  .node.up .lbl { bottom:44px; }
+  .node.down .lbl { top:44px; }
+  .node .ev { font-size:25px; font-weight:600; color:#cfe3ff; line-height:1.3; }
+  .node .tm { font-size:19px; color:#66788f; margin-top:9px; font-variant-numeric:tabular-nums; }
+  .node.on .ev { color:#8ff2ea; }
+  .node .tag { display:inline-block; margin-top:11px; padding:5px 13px;
+    border:1px solid rgba(94,231,223,0.42); border-radius:20px;
+    font-size:16px; color:#5ee7df; letter-spacing:0.5px; }
+  .playhead { position:absolute; top:110px; left:0; width:2px; height:80px;
+    background:linear-gradient(180deg,transparent,#5ee7df,transparent); opacity:0; }
+  .summary { position:absolute; left:120px; bottom:130px; opacity:0; }
+  .summary .row { display:flex; gap:78px; }
+  .summary .item .k { font-size:20px; color:#66788f; letter-spacing:1px; }
+  .summary .item .v { font-size:46px; font-weight:600; color:#8ff2ea; margin-top:10px;
+    font-variant-numeric:tabular-nums; }
+  .summary .concl { margin-top:44px; font-size:27px; color:#9fb2c9; }
+  .summary .concl b { color:#ffb86b; font-weight:600; }
+  .clock { position:absolute; right:120px; bottom:130px; text-align:right; opacity:0; }
+  .clock .t { font-size:80px; font-weight:600; color:#2f3d50; letter-spacing:2px;
+    font-variant-numeric:tabular-nums; }
+  .clock .d { font-size:20px; color:#4a5a70; margin-top:12px; letter-spacing:1px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="title-wrap">
+    <h1 id="t1">用户行为时间轴</h1>
+    <p id="t2">事件标签 · 按发生顺序还原用户决策路径</p>
+  </div>
+  <div class="axis-area" id="axis">
+    <div class="axis-line"></div><div class="axis-progress" id="prog"></div>
+    <div class="playhead" id="head"></div>
+  </div>
+  <div class="summary" id="sum">
+    <div class="row">
+      <div class="item"><div class="k">行为总数</div><div class="v" id="s1">0</div></div>
+      <div class="item"><div class="k">跨度</div><div class="v" id="s2">—</div></div>
+      <div class="item"><div class="k">关键事件</div><div class="v" id="s3">0</div></div>
+    </div>
+    <div class="concl" id="s4"></div>
+  </div>
+  <div class="clock">
+    <div class="t" id="clk">00:00</div><div class="d" id="cld">2026-01-01</div>
+  </div>
+</div>
+<script>
+// ↓↓↓ 只改这里：t 为时间轴上的归一化位置（0~1），up 决定标签在轴上方还是下方
+const EVENTS = [
+  { t:0.00, ev:"打开商城首页",   tm:"11-05 09:12", tag:"页面浏览", up:true  },
+  { t:0.16, ev:"浏览商品详情",   tm:"11-05 09:15", tag:"商品浏览", up:false },
+  { t:0.33, ev:"收藏该商品",     tm:"11-05 09:28", tag:"收藏",     up:true  },
+  { t:0.50, ev:"发起导购咨询",   tm:"11-05 09:33", tag:"咨询",     up:false },
+  { t:0.66, ev:"分享给好友",     tm:"11-05 09:41", tag:"分享",     up:true  },
+  { t:0.83, ev:"加入购物车",     tm:"11-06 10:05", tag:"加购",     up:false },
+  { t:1.00, ev:"完成下单",       tm:"11-06 10:12", tag:"下单",     up:true  },
+];
+const SPAN_TXT = "25 小时";           // ← 跨度等汇总数字必须是算出来的真实值
+const CONCL    = "7 个行为串联后，用户已进入 <b>决策期</b>";
+const DURATION = 13.0;                 // 总时长（秒），截图时传给脚本
+
+const axis = document.getElementById('axis');
+const W = 1680, nodes = [];
+EVENTS.forEach(e => {
+  const d = document.createElement('div');
+  d.className = 'node ' + (e.up ? 'up' : 'down');
+  d.style.left = (e.t * W) + 'px';
+  d.innerHTML = `<div class="dot"></div><div class="lbl"><div class="ev">${e.ev}</div>
+    <div class="tm">${e.tm}</div><div class="tag">${e.tag}</div></div>`;
+  axis.appendChild(d); nodes.push(d);
+});
+const prog = document.getElementById('prog'), head = document.getElementById('head');
+const sum = document.getElementById('sum');
+const t1 = document.getElementById('t1'), t2 = document.getElementById('t2');
+const clk = document.getElementById('clk'), cld = document.getElementById('cld');
+const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
+
+window.renderFrame = function(sec) {
+  // 标题 0-1.2s
+  const ta = clamp(sec/1.2, 0, 1);
+  t1.style.opacity = ta; t1.style.transform = `translateY(${(1-ta)*26}px)`;
+  const tb = clamp((sec-0.5)/1.2, 0, 1);
+  t2.style.opacity = tb; t2.style.transform = `translateY(${(1-tb)*20}px)`;
+
+  // 轴推进 1.2-9.2s。上限 1.08 是关键：留超冲余量，末节点才点得亮
+  const pRaw = clamp((sec-1.2)/8.0, 0, 1.08);
+  const p = Math.min(pRaw, 1);
+  prog.style.width = (p*W)+'px'; prog.style.opacity = p>0?1:0;
+  head.style.left = (p*W)+'px'; head.style.opacity = (p>0&&p<1)?1:0;
+
+  nodes.forEach((n,i) => {
+    const start = EVENTS[i].t, on = pRaw >= start-0.001;
+    n.classList.toggle('on', on);
+    const lbl = n.querySelector('.lbl');
+    if (on) {
+      const k = clamp((pRaw-start)/0.05, 0, 1);
+      lbl.style.opacity = k;
+      lbl.style.transform = `translateX(-50%) translateY(${(1-k)*(EVENTS[i].up?18:-18)}px)`;
+    } else { lbl.style.opacity = 0; }
+  });
+
+  // 汇总 9.2-11s
+  const sa = clamp((sec-9.2)/1.6, 0, 1);
+  sum.style.opacity = sa; sum.style.transform = `translateY(${(1-sa)*24}px)`;
+  const done = Math.round(clamp((sec-9.2)/1.2,0,1)*EVENTS.length);
+  document.getElementById('s1').textContent = done;
+  document.getElementById('s2').textContent = done>0 ? SPAN_TXT : '—';
+  document.getElementById('s3').textContent = done>=EVENTS.length-1 ? 3 : (done>=3?1:0);
+  document.getElementById('s4').innerHTML = done>=EVENTS.length ? CONCL : `${done} 个行为已记录`;
+
+  clk.style.opacity = Math.min(1, sa+0.4); cld.style.opacity = Math.min(1, sa+0.4);
+  const secs = Math.round(p*8.0*3600*23);
+  clk.textContent = `${String(Math.floor(secs/3600)+7).padStart(2,'0')}:${String(Math.floor((secs%3600)/60)+3).padStart(2,'0')}`;
+};
+window.DURATION = DURATION;
+window.renderFrame(0);
+</script>
+</body>
+</html>

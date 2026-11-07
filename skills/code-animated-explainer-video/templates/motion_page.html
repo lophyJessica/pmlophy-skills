@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<!-- 三层通用骨架：上层流水（时间轴）→ 中层规则判定 → 下层结论沉淀。
+     所有元素初始 opacity:0，由 renderFrame(sec) 按秒推进；不要用 CSS animation。 -->
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html,body { width:1920px; height:1080px; overflow:hidden;
+    background:radial-gradient(ellipse at 18% 0%, #18202e 0%, #0b0f16 58%, #06080c 100%);
+    font-family:"PingFang SC","Microsoft YaHei",sans-serif; color:#e6edf7; }
+  #stage { position:relative; width:1920px; height:1080px; }
+
+  .title-wrap { position:absolute; left:110px; top:66px; }
+  .title-wrap h1 { font-size:48px; font-weight:600;
+    background:linear-gradient(90deg,#5ee7df,#66a6ff); -webkit-background-clip:text;
+    background-clip:text; -webkit-text-fill-color:transparent; opacity:0; }
+  .title-wrap p { margin-top:14px; font-size:23px; color:#7285a0; opacity:0; }
+
+  /* 流水层：横向时间轴 */
+  .axis-area { position:absolute; left:110px; right:110px; top:236px; height:230px; }
+  .axis-line { position:absolute; left:0; right:0; top:118px; height:2px; background:rgba(120,150,200,0.16); }
+  .axis-progress { position:absolute; left:0; top:118px; height:2px; width:0;
+    background:linear-gradient(90deg,#5ee7df,#66a6ff); box-shadow:0 0 16px rgba(94,231,223,0.7); opacity:0; }
+  .node { position:absolute; top:118px; transform:translate(-50%,-50%); }
+  .node .dot { width:16px; height:16px; border-radius:50%; background:#1b2634;
+    border:2px solid #2b3949; margin:0 auto; }
+  .node.on .dot { background:#5ee7df; border-color:#5ee7df;
+    box-shadow:0 0 18px rgba(94,231,223,0.85); }
+  .node .lbl { position:absolute; left:50%; transform:translateX(-50%); width:200px;
+    text-align:center; opacity:0; }
+  .node.up .lbl { bottom:38px; } .node.down .lbl { top:38px; }
+  .node .ev { font-size:21px; font-weight:600; color:#cfe3ff; }
+  .node .tm { font-size:16px; color:#63748b; margin-top:7px; }
+
+  /* 规则层 */
+  .rules { position:absolute; left:110px; top:610px; width:1080px; opacity:0; }
+  .rule { display:flex; align-items:center; gap:16px; padding:13px 20px; margin-bottom:11px;
+    border-radius:10px; background:rgba(28,38,52,0.72);
+    border:1px solid rgba(70,90,115,0.26); opacity:0; transform:translateX(-14px); }
+  .rule.hit { background:rgba(24,52,50,0.85); border-color:rgba(94,231,223,0.5); }
+  .rule .ic { width:24px; height:24px; border-radius:50%; display:flex;
+    align-items:center; justify-content:center; font-size:15px;
+    background:#26313f; color:#5a6c82; }
+  .rule.hit .ic { background:rgba(94,231,223,0.16); color:#5ee7df; }
+  .rule .txt { font-size:20px; color:#8fa3bb; } .rule.hit .txt { color:#cfe9e6; }
+  .rule .res { margin-left:auto; font-size:17px; color:#54657a; }
+  .rule.hit .res { color:#5ee7df; }
+
+  /* 结论层 */
+  .profile { position:absolute; right:110px; top:610px; width:590px; opacity:0;
+    background:rgba(24,33,46,0.82); border:1px solid rgba(70,90,115,0.3);
+    border-radius:16px; padding:26px 28px; }
+  .tags { margin-top:26px; display:flex; flex-wrap:wrap; gap:11px; }
+  .tg { padding:9px 17px; border-radius:20px; font-size:18px; opacity:0; transform:scale(0.82);
+    color:#5ee7df; background:rgba(94,231,223,0.11); border:1px solid rgba(94,231,223,0.45); }
+  .use { margin-top:26px; padding-top:20px; font-size:17px; color:#66788f;
+    border-top:1px solid rgba(70,90,115,0.26); opacity:0; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="title-wrap">
+    <h1 id="t1">标题：从 X 到 Y</h1>
+    <p id="t2">副标题：一句话说清三层</p>
+  </div>
+  <div class="axis-area" id="axis">
+    <div class="axis-line"></div><div class="axis-progress" id="prog"></div>
+  </div>
+  <div class="rules" id="rules"><div id="ruleList"></div></div>
+  <div class="profile" id="profile">
+    <div style="font-size:19px;color:#7d90a8">结果</div>
+    <div class="tags" id="tagBox"></div>
+    <div class="use" id="useTxt"></div>
+  </div>
+</div>
+
+<script>
+// ---- 数据区：改内容只改这里 ----
+const EVENTS = [
+  { t:0.00, ev:"事件一", tm:"11-05 09:12", up:true  },
+  { t:0.25, ev:"事件二", tm:"11-05 09:15", up:false },
+  { t:0.50, ev:"事件三", tm:"11-05 09:28", up:true  },
+  { t:0.75, ev:"事件四", tm:"11-05 09:33", up:false },
+  { t:1.00, ev:"事件五", tm:"11-06 10:12", up:true  },
+];
+const RULES = [
+  { cond:"条件一，写业务语言", hit:true,  tag:"产出物 A", res:"命中" },
+  { cond:"条件二，写业务语言", hit:false, tag:"产出物 B", res:"曾命中 · 已失效" },
+];
+// --------------------------------
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const W = 1700;
+const axis=document.getElementById('axis'), nodes=[];
+EVENTS.forEach(e=>{
+  const d=document.createElement('div');
+  d.className='node '+(e.up?'up':'down'); d.style.left=(e.t*W)+'px';
+  d.innerHTML=`<div class="dot"></div><div class="lbl"><div class="ev">${e.ev}</div><div class="tm">${e.tm}</div></div>`;
+  axis.appendChild(d); nodes.push(d);
+});
+const ruleEls=[];
+RULES.forEach(r=>{
+  const d=document.createElement('div'); d.className='rule';
+  d.innerHTML=`<div class="ic">—</div><div class="txt">${r.cond}</div><div class="res">${r.res}</div>`;
+  document.getElementById('ruleList').appendChild(d); ruleEls.push(d);
+});
+// 关键：结论物只由生效规则生成，失效的不落
+const activeRules=RULES.filter(r=>r.hit), tagEls=[];
+activeRules.forEach(r=>{
+  const t=document.createElement('div'); t.className='tg'; t.textContent=r.tag;
+  document.getElementById('tagBox').appendChild(t); tagEls.push(t);
+});
+
+const t1=document.getElementById('t1'), t2=document.getElementById('t2');
+const prog=document.getElementById('prog'), rulesBox=document.getElementById('rules');
+const profile=document.getElementById('profile'), useTxt=document.getElementById('useTxt');
+
+window.renderFrame = function(sec){
+  // 0-1.2 标题
+  const a=clamp(sec/1.2,0,1); t1.style.opacity=a; t1.style.transform=`translateY(${(1-a)*22}px)`;
+  t2.style.opacity=clamp((sec-0.4)/1.2,0,1);
+
+  // 1.2-8.2 流水层推进（pRaw 超冲到 1.08，否则末节点永远半透明）
+  const pRaw=clamp((sec-1.2)/7.0,0,1.08), p=Math.min(pRaw,1);
+  prog.style.width=(p*W)+'px'; prog.style.opacity=p>0?1:0;
+  nodes.forEach((n,i)=>{
+    const on=pRaw>=EVENTS[i].t-0.001; n.classList.toggle('on',on);
+    const lbl=n.querySelector('.lbl');
+    if(on){ const k=clamp((pRaw-EVENTS[i].t)/0.06,0,1);
+      lbl.style.opacity=k;
+      lbl.style.transform=`translateX(-50%) translateY(${(1-k)*(EVENTS[i].up?16:-16)}px)`; }
+    else lbl.style.opacity=0;
+  });
+
+  // 8.4-11.4 规则层（按固定秒数逐条判定）
+  rulesBox.style.opacity=clamp((sec-8.4)/0.6,0,1);
+  ruleEls.forEach((el,i)=>{
+    const st=8.7+i*0.85, k=clamp((sec-st)/0.5,0,1);
+    el.style.opacity=k; el.style.transform=`translateX(${(1-k)*-14}px)`;
+    const hit=sec>st+0.3; el.classList.toggle('hit',hit);
+    el.querySelector('.ic').textContent = hit ? (RULES[i].hit?'\u2713':'!') : '\u2014';
+  });
+
+  // 11.8-15.4 结论层沉淀
+  const pa=clamp((sec-11.8)/0.6,0,1); profile.style.opacity=pa;
+  profile.style.transform=`translateY(${(1-pa)*18}px)`;
+  tagEls.forEach((el,i)=>{
+    const k=clamp((sec-(12.4+i*0.75))/0.45,0,1);
+    el.style.opacity=k; el.style.transform=`scale(${0.82+k*0.18})`;
+  });
+  const ua=clamp((sec-14.6)/0.7,0,1); useTxt.style.opacity=ua;
+  useTxt.innerHTML = `这 ${activeRules.length} 个结果可直接用于<b>下游动作</b>`;
+};
+window.renderFrame(0);
+</script>
+</body>
+</html>
