@@ -220,8 +220,35 @@ AI 做这类视频最典型的失败：把逻辑图伪装成产品界面——�
 
 入库时成品控制在 10MB 以内最好（超30MB 上传卡、观众也打不开），大文件就降码率或压时长。
 
+**只交最终完整版，不发过程版。** 用户要的“成片”只有一个定义：带旁白的完整版。纯画面版、修正版、加 -fix 后缀的版本一律自己留着当底档，不要一并发出去让他挑（原话：「给我的产物只需要一个完整版，不需要过程版也给我」）。中间产物多了他会自己分不清哪个是最终版。
+
+## 出厂前的三项硬校验（缺一项就等于发了个废片）
+
+交付前必须跑完这三项，任何一项不过都先修再发：
+
+1. **音轨存在且响度正常**。`ffprobe -show_entries stream=codec_type` 确认有 audio 流；`ffmpeg -i f.mp4 -vn -af volumedetect -f null /dev/null` 看 mean/max。人声成片用 `loudnorm=I=-16:TP=-1.5:LRA=11` 归一，只挂音效的版本 mean≈-28dB 就够。**实测踩过：mean -43.5dB（带旁白版）与 -52dB（音效版）在手机/笔记本上等于没声音**，用户只会说“声音太小太小根本听不见”；此外还出现过整条无音频流的“无旁白版”。
+2. **解码完整性**：`ffmpeg -v error -i f.mp4 -map 0:v -f null - 2>&1 | wc -l` 必须是 0。有几百上千行 NAL 报错的文件是坏的，播放时表现为**画面和文案对不上、开头几秒跳到中段某一步**——先怀疑文件损坏，不要去改内容/顺序重排。同批次里干净的那条可以当对照（同一条流水线出来的片子不会只有一条内容错）。
+3. **首帧与末帧肉眼确认**：抽首帧看是不是片子第 ① 步，抽末帧看是不是终态；数字类再用 region 裁剪放大读值。
+
+三项都过再发。用户报“画面和文字不符”时，先按上面第 2 条解码错误数定位，再谈内容。
+
+## 把成片送到用户机（Tailscale + scp，别让他自己敲命令）
+
+```bash
+scp -i ~/.ssh/id_ed25519_forge -o IdentitiesOnly=yes \
+  a.mp4 b.mp4 liulongfei@<mac-tailscale-ip>:~/video-robin/
+ssh -i ~/.ssh/id_ed25519_forge liulongfei@<mac-tailscale-ip> 'md5 -r ~/video-robin/*.mp4'
+```
+
+- 用户的 Mac 收件目录固定 `~/video-robin`，不要另建目录也不要问放哪。
+- **必须 `-i <key> -o IdentitiesOnly=yes`**：私钥文件名不是默认的 `id_ed25519` 时不显式指定，ssh 根本不会把它递上去，现象是 `Permission denied (publickey)` ——此时先查本机 `~/.ssh/*.pub` 与远端 `~/.ssh/authorized_keys`，不要急着重装 sshd 或换用户。
+- 传完两端各跑一次 md5 逐条比对再报完成；只报“已传输”不算交付。
+- Mac 侧只开 Tailscale 不等于能连：macOS 的「远程登录」默认关闭，需要用户在 系统设置→通用→共享 里打开；公钥没加入 `~/.ssh/authorized_keys` 同样连不上。走不通时的备用通道：把文件放到静态站目录，给一条可直接粘贴的 `curl -O` 循环命令（文件仍要核 Content-Length 或 md5）。
+
+
 ## 环境坑
 
+- **`PYTHONPATH` 被上一层进程占用了，会让所有 python 都加载到错版本的包**：报 `ModuleNotFoundError: No module named 'greenlet._greenlet'`（或任何 `_xxx` C 扩展找不到）时，不是包没装，是 `PYTHONPATH` 指向了另一个解释器的 site-packages。验证与重跑用：`env -u PYTHONPATH <install venv>/bin/python shot.py`。Hermes 本体升级后 venv 被重建，旧解释器的包目录还留在环境变量里，这个坑会反复出现。
 - **Playwright 的浏览器版本常与本机缓存不一致**：报 `Executable doesn't exist at .../chrome-headless-shell-<ver>` 时不要去下载（国内慢），先 `ls ~/.cache/ms-playwright/` 看已有版本，用 `executable_path=` 指过去，并补 `--no-sandbox --disable-dev-shm-usage`（容器/VPS 必需）。
 - **中断长渲染时别用 `pkill -f <关键词>`**：执行这条命令的 shell 自身命令行里就含那个关键词，pkill 会把自己一起杀掉（现象是命令返回 exit -15 / -9，后面什么都没输出）。用工具层的 `process_manage(action='kill', session_id=...)` 精确杀掉那个后台会话；必须在 shell 里杀时，把关键词拆开拼接（`P="s""hot.py"`）避免自匹配。
 - **重跑先补缺帧，不要盲目 `rm -rf frames`**：按帧号 `os.path.exists` 扫一遍只渲染缺失的，中断过的任务能原地续上。只有改了动效页逻辑（画面全部失效）才需要清空重来。
@@ -260,6 +287,32 @@ AI 做这类视频最典型的失败：把逻辑图伪装成产品界面——�
 - 系统时序片（240s，五泳道）：`/root/repos/video-source/system-seq-240s/`
 - 模板：`templates/motion_page.html`（通用骨架）、`templates/motion-page-dark.html`（深色时间轴版）、`templates/shot.py`、`scripts/shoot_frames.py`（`python scripts/shoot_frames.py index.html ./frames 30 13`，自动找缓存 chromium 并打印合成命令）
 - 形态判断对照：`references/explainer-vs-product-demo.md`（概念讲解 vs 产品界面演示，混做两头不像）
+
+## 交付前必验三项（不验就会交出去一个坏片）
+
+做完不要先看画面好不好看，先跑这三条硬指标，任一条不过就别发：
+
+```bash
+# 1 解码完整性：必须为 0。非 0 说明编码/写出已损坏，表现是拖进度条画面乱跳、开头就播到中间某一步
+ffmpeg -v error -i out.mp4 -map 0:v -f null - 2>&1 | wc -l
+# 2 音轨存在且听得见：mean 应在 -20~-16 dB，max ≥ -3 dB。曾出现 mean -43.5dB（几乎无声）和干脉没音轨两种事故
+ffmpeg -hide_banner -nostats -i out.mp4 -vn -af volumedetect -f null /dev/null 2>&1 | grep -E 'mean_volume|max_volume'
+# 3 首帧对内容：抽 2s/30s 两帧用 vision 读时间码+当前步骤，确认进度与内容同步（损坏片的典型症状就是时间码与画面错位）
+```
+
+- 响度不达标用一键标准化：`-af "loudnorm=I=-16:TP=-1.5:LRA=11"`（视频流 copy，只重编音频）。旁白+音效混音时旁白 1.0、音效 0.35，音效源本身的电平往往偏低，要整轨拉。
+- 损坏片不能靠“重跑合成”修：帧序列已经丢了就只能重渲。渲之前先 `rm` 旧成片，否则源文件存在时脚本的断点续渲会跳过。
+- 重渲前先确认磁盘和各 python 环境可用（见下）。
+
+## 环境坑：升级后 PYTHONPATH 会让 Playwright 全线报 greenlet
+
+Hermes 升级后环境里残留 `PYTHONPATH=<新解释器>/site-packages`，此时任何 python 都会加载到不匹配的 C 扩展，报 `ModuleNotFoundError: No module named 'greenlet._greenlet'`，换哪个解释器都没用（我试了系统 python3、两个 venv，全部失败）。解法是在命令前清掉它：
+
+```bash
+env -u PYTHONPATH /usr/local/lib/hermes-agent/venv/bin/python shot.py
+```
+
+判断是哪边坏了：`python -c "import playwright, greenlet; print(greenlet.__version__)"`——能导入说明环境没问题，报 `_greenlet` 就是 PYTHONPATH 污染。
 
 ## 派给别的 agent 时
 
