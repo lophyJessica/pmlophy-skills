@@ -164,3 +164,20 @@
 本地同步只需一句判据：**同步 `local-` 开头 + 无前缀的，跳过 `hermes-` 开头的。**
 
 改名注意：skill 之间会互相引用名字，改名后要 `grep -rl '<旧名>'` 扫全库改引用；Windows 上逐 skill Junction 的目录名要跟着改，必须重跑 `sync-skills-windows.bat` 重建链接。因此新 skill 从起名就守规范，存量分批改。
+
+## 各 agent 的实际 skill 目录（Mac 实测，2026-11-09）
+
+| Agent | 用户级目录 |
+|---|---|
+| 中枢 | `~/.agents/skills` |
+| Cursor | `~/.cursor/skills` |
+| Claude Code | `~/.claude/skills` |
+| Codex | `~/.codex/skills` |
+| TRAE | `~/.trae/skills`、`~/.trae-cn/skills` |
+| WorkBuddy | `~/.workbuddy/skills`、`~/.workbuddy-ai/skills` |
+| 反重力 Antigravity | `~/.gemini/config/skills`（全局用户技能；`builtin/skills` 是官方内置，别动） |
+| Qoder | 待确认（只见内置 security-resources） |
+
+不要动的目录：`builtin/*`、`design_libraries/*`、`connectors/*`、`security-resources/*`、`memories/*`、`tests/*`，以及项目自带的 `<项目>/skills`。
+
+同步：`bash sync-skills-mac.sh --discover` 先看，确认后 `bash sync-skills-mac.sh --auto ~/.gemini/config/skills`。
