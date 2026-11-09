@@ -1,4 +1,4 @@
-# pmlophy-skills Windows 同步脚本（PowerShell 主体）
+﻿# pmlophy-skills Windows 同步脚本（PowerShell 主体）
 # 作用：把仓库 skills/ 里每个 skill 以 Junction 形式挂到各 agent 的 skill 目录
 # 特性：重建式同步；真实目录先备份不删除；自动清理指向已删 skill 的僵尸 Junction；永不触碰 ~/.hermes
 # 用法：由 sync-skills-windows.bat 调用，或直接 powershell -ExecutionPolicy Bypass -File sync-skills-windows.ps1
