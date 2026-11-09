@@ -1,9 +1,12 @@
 #!/bin/bash
-# 把 pmlophy-skills 仓库里的 skill 软链到 Mac 的各个 agent skill 目录，供本地 agent 共用。
+# 把 pmlophy-skills 仓库里的 skill 软链到 Mac 上所有本地 agent 的 skill 目录。
 #
 # 用法：
-#   bash sync-skills-mac.sh --dry-run
-#   bash sync-skills-mac.sh ~/.agents/skills ~/.cursor/skills ~/.claude/skills ~/.codex/skills
+#   bash sync-skills-mac.sh                    # 链到默认中枢 ~/.agents/skills
+#   bash sync-skills-mac.sh --discover         # 只探查：列出本机所有可能的 agent skill 目录（不改动）
+#   bash sync-skills-mac.sh --auto --dry-run   # 对探查到的全部目录做演练
+#   bash sync-skills-mac.sh --auto             # 对探查到的全部目录真跑
+#   bash sync-skills-mac.sh ~/.agents/skills ~/.qoder/skills   # 只链到指定目录
 #
 # 只做两件事：① 为仓库里每个 skill 建软链（已存在且指向正确的跳过） ② 清掉指向仓库内已不存在 skill 的断链。
 # 不删除任何真实目录；遇到同名真实目录会跳过并提示。演练模式不创建任何目录或链接。
@@ -13,20 +16,87 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
 DRY=0
+DISC=0
+AUTO=0
 HUBS=()
 for a in "$@"; do
-  if [ "$a" = "--dry-run" ]; then
-    DRY=1
-  else
-    HUBS+=("$a")
-  fi
+  case "$a" in
+    --dry-run) DRY=1 ;;
+    --discover) DISC=1 ;;
+    --auto) AUTO=1 ;;
+    *) HUBS+=("$a") ;;
+  esac
 done
+
+# 已知的 agent skill 目录（按 2026-11-09 在用户 Mac 上实测到的位置整理）
+KNOWN=(
+  "$HOME/.agents/skills"
+  "$HOME/.cursor/skills"
+  "$HOME/.claude/skills"
+  "$HOME/.codex/skills"
+  "$HOME/.trae/skills"
+  "$HOME/.trae-cn/skills"
+  "$HOME/.workbuddy/skills"
+  "$HOME/.workbuddy-ai/skills"
+  "$HOME/.qoder/skills"
+  "$HOME/.gemini/antigravity/skills"
+  "$HOME/.gemini/config/skills"
+  "$HOME/.zcode/skills"
+)
+
+discover() {
+  # 已知位置 + 主目录内 4 层以内、名字为 skills 且位于隐藏配置目录下的路径
+  {
+    for d in "${KNOWN[@]}"; do [ -d "$d" ] && echo "$d"; done
+    find "$HOME" -maxdepth 4 -type d -name skills \
+      -not -path "*/node_modules/*" -not -path "*/.git/*" \
+      -not -path "*/Library/Caches/*" 2>/dev/null \
+      | while IFS= read -r p; do
+          rel="${p#$HOME/}"
+          case "$rel" in
+            .*|*/.*) ;;                 # 只保留隐藏配置目录下的
+            *) continue ;;
+          esac
+          # 排除应用内置资源、项目内自带、应用私有缓存目录
+          case "$rel" in
+            */builtin/*|*/builtin|*/design_libraries/*|*/connectors/*|*/security-resources/*|*/memories/*|*/tests/*|*/.hermes/*|*/项目*|*/个人文件/*|*/Documents/*|*/Desktop/*|*/Downloads/*) continue ;;
+          esac
+          echo "$p"
+        done
+  } | sort -u
+}
+
+if [ "$DISC" = "1" ]; then
+  echo "本机探查到的 agent skill 目录："
+  found=0
+  while IFS= read -r d; do
+    printf "  %-52s 现有子项 %s 个\n" "${d/#$HOME/~}" "$(ls -A "$d" 2>/dev/null | wc -l | tr -d ' ')"
+    found=$((found+1))
+  done < <(discover)
+  echo "合计 $found 个。要全部同步就加 --auto。"
+  exit 0
+fi
+
+if [ "$AUTO" = "1" ]; then
+  while IFS= read -r d; do HUBS+=("$d"); done < <(discover)
+fi
+
 if [ ${#HUBS[@]} -eq 0 ]; then
   HUBS=("$HOME/.agents/skills")
 fi
 
+# 去重
+declare -a UNIQ=()
+for h in "${HUBS[@]}"; do
+  dup=0
+  for u in "${UNIQ[@]:-}"; do [ "$u" = "$h" ] && dup=1 && break; done
+  [ "$dup" = "0" ] && UNIQ+=("$h")
+done
+HUBS=("${UNIQ[@]}")
+
 echo "仓库: $REPO_ROOT"
-echo "目标目录: ${HUBS[*]}"
+echo "目标目录（${#HUBS[@]} 个）:"
+for h in "${HUBS[@]}"; do echo "  ${h/#$HOME/~}"; done
 if [ "$DRY" = "1" ]; then echo "模式: 演练（不改动）"; fi
 
 total_created=0
@@ -35,7 +105,7 @@ total_skipped=0
 total_removed=0
 
 for HUB in "${HUBS[@]}"; do
-  echo "== 处理 $HUB"
+  echo "== 处理 ${HUB/#$HOME/~}"
   if [ "$DRY" = "0" ]; then mkdir -p "$HUB"; fi
 
   created=0
@@ -76,7 +146,7 @@ for HUB in "${HUBS[@]}"; do
     esac
   done < <(find "$HUB" -maxdepth 1 -type l 2>/dev/null)
 
-  echo "  新建链接: $created   已存在/刷新: $refreshed   跳过: $skipped   清理断链: $removed"
+  echo "  新建 $created / 刷新 $refreshed / 跳过 $skipped / 清断链 $removed"
   total_created=$((total_created + created))
   total_refreshed=$((total_refreshed + refreshed))
   total_skipped=$((total_skipped + skipped))
