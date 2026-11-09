@@ -107,7 +107,7 @@ simplify	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows
 taste-review	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
 test-desktop-app	本地agent专属	保留在库，VPS 不取	-	有	只在本地 agent 用，VPS 没有	
 account-forensics-recovery	杰西卡专属	留在 VPS，不入库	productivity	无	我的作业流程/个人事项，本地 agent 不会用	Use when 忘了哪个账号或浏览器做过操作、或账号被封要申诉。
-agent-skills-library	杰西卡专属	留在 VPS，不入库	productivity	有	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	维护用户agent技能库(pmlophy-skills聚合+软链5agent)。加/迁移/软链skill时用。
+agent-skills-library	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	维护用户agent技能库(pmlophy-skills聚合+软链5agent)。加/迁移/软链skill时用。
 ai-agent-audit-closeout	杰西卡专属	留在 VPS，不入库	software-development	无	我的作业流程/个人事项，本地 agent 不会用	AI 产物收尾审计方法论——delegate 并行子代理做功能+UI双审计、分级问题清单、合并为一条修复指令、标准落库解耦。当需要对 AI 
 ai-agent-delivery-review	杰西卡专属	留在 VPS，不入库	software-development	无	我的作业流程/个人事项，本地 agent 不会用	AI agent(Codex/Cursor/反gravity)交付代码/部署后的审查与验收——部署完整性验证、前后端接口契约对齐、数据迁移引
 ai-apprentice-training	杰西卡专属	留在 VPS，不入库	software-development	无	我的作业流程/个人事项，本地 agent 不会用	驯养本地 AI agent 掌握工程方法论并执行真实任务（贾维斯模式）——方法论喂入→复述验证→结构化实操→记忆沉淀→逐步进阶。当用户要让本
@@ -166,7 +166,7 @@ tui-widgets	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/H
 used-apple-device-verification	杰西卡专属	留在 VPS，不入库	productivity	无	我的作业流程/个人事项，本地 agent 不会用	二手 Apple 设备（MacBook/iPhone/iPad）验机清单与防坑。当用户购买/接收二手 Mac 或 iOS 设备、需要验机（真
 user-messaging-format	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	杰西卡发给路飞的聊天消息格式标准——禁用 Markdown、列表渲染成表格、结论先行、简洁可读。
 vivo-cms-data-pull	杰西卡专属	留在 VPS，不入库	productivity	无	我的作业流程/个人事项，本地 agent 不会用	Use when 从 vivo CMS 的 BI 看板或在线文档取数。
-vivo-private-domain-monthly	杰西卡专属	留在 VPS，不入库	productivity	有	我的作业流程/个人事项，本地 agent 不会用	外销私域月度盘点取数（WhatsApp 好友与账号）。
+vivo-private-domain-monthly	杰西卡专属	留在 VPS，不入库	productivity	无	我的作业流程/个人事项，本地 agent 不会用	外销私域月度盘点取数（WhatsApp 好友与账号）。
 volcengine-realtime-voice	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	接入豆包/火山端到端实时语音大模型（S2S，语音进语音出，全双工打断）——WebSocket 二进制协议、握手头、事件流、PCM 音频帧、人
 vps-administration	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Manage, monitor, and maintain a Linux VPS — system health checks, disk
 vps-git-push-setup	杰西卡专属	留在 VPS，不入库	(root)	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	VPS 配置 GitHub SSH push 权限——生成 ed25519 key + 用户 Mac 添加公钥 + git remote 配
