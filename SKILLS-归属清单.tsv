@@ -1,0 +1,170 @@
+skill名	归属	建议动作	分类目录	仓库是否已有	归属判据	说明
+a2a-agent-orchestration	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	编排Codex、反重力(Antigravity)等多Agent并行执行代码修改任务——工具选择、五段式指令格式、并行编译避坑、审计vs修改分
+a2a-instruction-format	共享	入库（VPS→仓库）	software-development	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Write precise instructions for AI coding agents (Codex, 反重力/Antigravit
+account-forensics-recovery	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 忘了哪个账号或浏览器做过操作、或账号被封要申诉。
+agent-browser-automation	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Agent 浏览器自动化（ego lite 等 agent-native browser）——安装机制/skill 目录兼容/故障排查/AI
+agent-instruction-preflight	共享	入库（VPS→仓库）	software-development	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 给 agent 下指令前做校验。四层防护防跑偏返工。
+ai-agent-audit-closeout	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	AI 产物收尾审计方法论——delegate 并行子代理做功能+UI双审计、分级问题清单、合并为一条修复指令、标准落库解耦。当需要对 AI 
+ai-agent-delivery-review	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	AI agent(Codex/Cursor/反gravity)交付代码/部署后的审查与验收——部署完整性验证、前后端接口契约对齐、数据迁移引
+ai-apprentice-training	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	驯养本地 AI agent 掌握工程方法论并执行真实任务（贾维斯模式）——方法论喂入→复述验证→结构化实操→记忆沉淀→逐步进阶。当用户要让本
+ai-artifact-pipeline	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	AI 产物自动流转管道：Cursor/Codex 改完 → 自动上传 zip 到 VPS 自动部署 + 自动提交自检报告 → 杰西卡审核出 
+ai-browser-automation	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	AI/Agent 浏览器自动化工具生态与使用——ego (lite)（Agent-Native Browser，登录态继承+Space隔离+
+ai-business-research	共享	入库（VPS→仓库）	research	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	>
+ai-sharing-presentation	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	给同事做 AI 提效分享/演示用。受众先行、并跑对比演示法、产出导向指令边界、分享边界红线。
+audit-gap-batch-closure	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	PRD对齐审计缺口(部分完成/未做项)的批量消化闭环:先executor只读复审定三态真账(防多会话/new后账面失真)→按性价比排单(部分
+b-end-ui-stack	共享	入库（VPS→仓库）	(root)	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	B端系统前端技术栈选型与迁移——React/Vue组件库组合、禁止Tailwind手搓、Ant Design迁移清单、Gemini坑点。
+be-ui-framework-selection	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	B端系统UI框架选型——新项目启动时第一时间问用户选组件库组合，禁止Tailwind纯手搓。
+blocked-page-recovery	共享	入库（VPS→仓库）	web	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when a fetch fails: 403/429, paywall, WAF, bot wall.
+box	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Box manages cloud files, sharing, search, and metadata.
+browser-history-forensics	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 要从本机反查「某次操作/某个账号是在哪个浏览器、哪个账号下做的」（账号找回、登录溯源）。
+bulk-extraction-filter-verification	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 从后台页面按维度批量取数（逐国/逐角色/逐租户逐条读数）。筛选项会静默失效，读回来的整批数是废的。
+capacitor-apk-packaging	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Package a Vite/React web app into a self-signed Android APK via Capaci
+china-individual-income-tax	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	中国个税计算与纳税清单生成——工资薪金累计预扣预缴 + 年终奖单独计税（全年一次性奖金），输出逐月 Excel 清单（官方 7 列格式：纳税
+china-salary-tax-calc	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	中国工资个税与到手工资计算（累计预扣预缴法 + 年终奖单独计税）——按用户提供的薪资/五险一金基数/年终奖参数逐月算出个税并输出 Excel
+code-animated-explainer-video	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	用代码生成动效讲解视频（HTML动效页→逐帧截图→ffmpeg合成），不用视频模型。讲动态过程时用。
+codex	共享	入库（VPS→仓库）	autonomous-ai-agents	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Delegate coding to OpenAI Codex CLI (features, PRs).
+codex-delivery-pipeline	共享	入库（VPS→仓库）	devops	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Codex 交付管道管理——指令模板（五段式+部署通道+自检报告）、"报告到了代码没到"断层问题、验收顺序（报告→代码实锤→线上实锤→亲测）
+coding-agent-subscription-bridge	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	把 IDE/厂商订阅额度接进 coding agent（OAuth 插件或反代网关），含出口 IP 风控与 VPS 托管。
+command-discipline	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	标准化的命令输出格式：标注执行位置、完整序列含退出重启、禁止混淆服务名
+competitor-news-monitor	共享	入库（VPS→仓库）	research	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Watch named companies for material news; cited digests.
+crm-requirements-analysis	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 用户做需求分析或评审 AI 的范围产物。含七步法、新增判定、验收纪律。
+cross-market-feature-diff	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 做内外销/跨地区功能差异对比（导购端、商城、后台）。源码取证出内销基准行，现场只补外销列。
+cursor-hermes-collaboration	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Coordinate work between Cursor (AI IDE) and Hermes (chat agent) — spli
+de-ai-tone	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	写正式中文长文怕AI味时用，按11条白名单规则收尾去AI味、信息守恒。
+deliverable-verification	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 脚本出交付件或派 agent 改码前核数据真值。
+deployment-network-diagnostics	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Diagnose connectivity issues between web frontends and VPS APIs — ngin
+doc-ownership-and-placement	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 新建或搬迁规范与文档：先判归属和权威目录。
+document-deep-read	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Deep-read large documents (.docx, .xlsx, .pdf) — find, extract, and cr
+document-to-action-items	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Extract cited obligations, deadlines, tasks from documents.
+docx	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Create, read, edit, template, and review Word .docx files.
+ego-agent-browser	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	ego (lite) Agent 浏览器——让 Mac 上的 Codex/Claude Code/Cursor 等 Agent 用真实登录态
+excel-deliverable-authoring	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 做交付级 Excel：图表趋势页、合并分组、嵌图、行粒度、导在线表格。
+excel-report-deliverable	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 用代码生成带图表或插图的 Excel 报表交付件。
+field-list-tsv	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	字段清单TSV编写/转换/PRD互补：13列、中英文名、禁折叠。用户说"字段清单转TSV/补字段/TSV对齐"时用。
+forge-deployment	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	把 forge ERP/WMS 前端部署到 VPS(nginx + Cloudflare SSL + 双站点路由)。当用户说"部署 forg
+forge-prd-generation	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	用AI(Workbuddy/Codex/反重力)基于context地基+模板+参照物一次生成完整PRD套件——然后走查→人定决策→回写con
+forge-prd-scaffold	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Build or extend the Forge PRD documentation hierarchy (prd-docs/模块/单据/
+forge-prd-workflow	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Forge 项目 PRD 生成的标准流程与坑点——context 先修的纪律、供应商侧模块的特殊处理、部署前检查清单。
+forge-project-management	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Forge 项目(ERP+WMS)的部署、A2A并行开发、PRD审计等工作流规范。当用户提到"部署forge""A2A并行""PRD审计""
+forge-project-workflow	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Forge 项目从0到1的标准工作流——搭框架→PRD→用例推演→前端→审计。CRM/WMS/ERP项目均适用。
+forge-ui-and-agents	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Forge 项目 UI 框架决策门、Gemini 反重力指令红线、交叉走查、VPS SSH push 等实战经验。
+frontend-dom-shadowing-pitfalls	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	前端 DOM/HTML 命名遮蔽与样式丢失类 bug 的排查方法论与已知坑——React/antd 表单字段名遮蔽原生属性、样式写入静默失败
+frontend-runtime-debugging	共享	入库（VPS→仓库）	(root)	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	前端运行时 bug 分层取证调试——源码/构建/部署/React fiber/DOM 五层断言排查法,Playwright 无缓存复现,pr
+frontend-ui-audit-loop	共享	入库（VPS→仓库）	(root)	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	AI agent 前端UI交付的审计-修复-部署-实测闭环。适用于 forge-scrm/wms/erp 等 React+antd 项目;含
+gemini-frontend-rebuild	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	用 Gemini/Antigravity 复刻或升级前端页面——沉淀公共组件、还原老系统风格、批量改样式。当用户说"优化页面样式/复刻页面/
+git-workflow-conventions	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	用户多仓库统一 git 工作流铁律：main 开发、master 收口。所有项目（forge-erp/wms/crm、copy-wms、lo
+github	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	GitHub via gh CLI: PRs, issues, reviews, repos, auth.
+github-auth	共享	入库（VPS→仓库）	github	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	GitHub auth setup: HTTPS tokens, SSH keys, gh CLI login.
+github-pr-workflow	共享	入库（VPS→仓库）	github	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	GitHub PR lifecycle: branch, commit, open, CI, merge.
+github-repo-management	共享	入库（VPS→仓库）	github	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Clone/create/fork repos; manage remotes, releases.
+grounded-citations	共享	入库（VPS→仓库）	research	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Ground answers and documents in cited, verifiable sources.
+guide-app-prototype	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	导购端 V销冠 原型 guide-app——栈、路由清单、NavBar 外壳、设计稿口径。
+hermes-agent-skill-authoring	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Author in-repo SKILL.md files: frontmatter and structure.
+intranet-data-capture	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	公司内网只读抓取（Cursor @Browser）——表格导出、页面结构/DOM 取证、并排比对与对账。当任务需要在公司电脑上用 Curso
+intranet-data-collection	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 从公司内网抓表格或文档回本地：Cursor 抓取指令规范。
+karpathy-guidelines	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Reduce common LLM coding mistakes — surface assumptions before coding,
+live-ui-form-evidence	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 复刻/对齐线上系统界面形态、审计原型与文档差异时——线上证据从哪来、谁拍板、哪些「差异」不是缺陷。
+local-mock-screenshot-pipeline	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 给无登录态存量前端做本地 mock 截图取证。
+mac-local-forensics	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 要在 Mac 本机查痕迹、找账号、定位数据时。读浏览器历史与应用 SQLite，用证据代替让人回忆。
+mac-windows-virtualization	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	在 Apple Silicon Mac 上跑 Windows 虚拟机（Parallels/UTM）——装 Windows 11 ARM、跑 
+make-com-automation	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Make.com（原 Integromat）自动化平台搭建——无代码工作流串联 AI 模型/飞书/Webhook。当用户帮他人（如姐夫）搭新
+markdown-wiki-delivery	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Markdown文档交付到Confluence等wiki平台的适配与自检。
+md-deliverable-sync	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	维护主稿与内嵌图发布版交付档时用。成套交付，发布版重生成。
+meeting-action-items	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Turn meeting notes into cited decisions, owners, tickets.
+mermaid-diagram-authoring	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 写 PRD 的 Mermaid 流程图/时序图并渲对。
+microsoft-office	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Create, read, and edit Word, PowerPoint, and Excel files.
+multi-agent-doc-prototype-coordination	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 多 agent 并行改文档与原型，或审计其一致性。
+multi-agent-shared-repo	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 多个执行者共改同一仓库时——分工边界、动手前验状态、回写顺序与安全撤销。
+multilingual-import-merge	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	合并多语言导入表：平台导出 × 在线翻译文档。
+multilingual-translation-import	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 把翻译稿合并进多语言模板、产出可导入词条文件。
+obsidian	共享	入库（VPS→仓库）	note-taking	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Read, search, create, and edit notes in the Obsidian vault.
+ocr-and-documents	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Extract text from PDFs/scans (pymupdf, marker-pdf).
+okr-monthly-update	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	做月度 OKR 更新：四维度、证据式进度、趋势图 Excel。
+opencode-antigravity-openchamber	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 接反重力额度进 OpenCode/OpenChamber 或插件不加载。
+overseas-cms-metrics-and-launch-report	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	外销CMS运营指标体系与上线报告PPT骨架。
+personal-account-recovery	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 账号被封要申诉、忘记是哪个账号、账号太多记混。先本机取证定位，再申诉，后落清单。
+plan	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Plan mode: write an actionable markdown plan to .hermes/plans/, no exe
+pm-ai-project-setup	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Set up an AI-assisted PM project workspace — standard directory struct
+pm-deliverable-audit	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Audit AI-generated PM deliverables (PRDs, prototypes, field lists) aga
+pm-prd-code-alignment	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	PRD/规格文档 ↔ 前端代码三向对齐审计。当需要审核 AI 生成的前端代码是否与 PRD、Demo 规格、context 业务文档一致时使
+pm-project-context-setup	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Build a structured project context directory for PM work, write AGENTS
+pm-project-onboarding	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	PM接盘新项目时的标准流程——先摸清现有资产(代码+文档+原型),不假设白纸项目。
+pptx-slide-surgery	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 改造已有 PPTX 加页改页而不重做整份。
+prd-backfill	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	前端/代码改动落地后要回写PRD及关联文档（字段/规则/Demo/流程图/验收/权限）时用。忠实对齐已实现。
+prd-context-workflow	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	PRD-first workflow with context back-write — write context norms first
+prd-doc-authoring	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	编写评审PRD交付档：主PRD+Demo+原型标注合一成自包含完整档，整页红框图，base64发布。
+prd-requirement-review	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	需求评审：对已有PRD/方案按简档或全档评审，输出阻塞/风险/待确认/能否进研发。模糊需求先澄清。
+prd-review-backfill	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	评审PRD变更回写权威源：diff找差异→分层待回写清单→以评审PRD为准回写字段清单/主PRD/Demo→回写后校验。当用户说"回写/同步
+prd-review-refactor-loop	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	大批量 PRD/文档走查返修与全项目规范化的 A2A 执行闭环。当用户要对一个多模块 PRD 仓库做走查修复、字段命名统一、Mock/引用链
+pre-task-checklist	共享	入库（VPS→仓库）	(root)	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	接任务前自检——防部署覆盖/跳步骤/擅自动手/发重复文件/DB名瞎猜/时间乱猜/脑补输出。每次做技术操作前必须扫一遍。
+product-doc-visual-authoring	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	方案/PRD「全是大白话、缺图」时用：文不如表表不如图、六图、HTML线框、去昵称。
+product-issue-triage	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 收到线上问题单/缺陷报障要出判断。从产品价值定该不该做，不从技术修法入手。
+product-price-monitor	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Watch product, flight, or listing prices; alert on target.
+product-research-comparison	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Research and compare products (hardware, software, services) for purch
+project-onboarding	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	接手新项目/入职时：消化文档、产出AGENTS.md、识别产品缺口。适用场景：入职第一天、接手他人项目、拿到全套项目文档需要快速建立产品认知
+project-repo-curation	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	项目仓库目录整理、瘦身与批量删除——删内容≠删文件夹、归档优于删除。
+prototype-annotation-review	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	原型标注工作流（检阅者版）。当 Codex/Cursor 用项目内的 prototype-annotation Skill 生成/更新原型标
+prototype-annotation-workflow	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	原型标注工作流——用 AI 给已有前端原型生成"左原型右标注"（模仿 Axure 传统，AI 自动化）。三层分工：Codex/Cursor 
+prototype-fidelity-discipline	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 复刻存量系统前端原型。真实系统是唯一真源。
+requirement-list-breakdown	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	在线需求表功能点拆解：1-5级菜单+描述，按功能点不按字段拆。
+requirements-analysis	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	需求分析：先真伪鉴定（组织层能解的不做产品设计），再七步拆解排序取舍分期，出分析档与问卷。
+resume-writing	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Create, review, and optimize resumes with the user's preferred project
+source-clone-prototype	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	搬源码做前端原型时用。组件不替换，先验证私有库能装。
+spec-alignment-governance	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 文档与原型口径分叉、需裁决并收口口径。
+structured-ai-prompt-template	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	刘龙飞偏好的五段式结构化提示词模板 (Context / Request / Output format / 红线禁止 / Checkpoi
+supply-chain-product-manager-portfolio	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Build, refine, and document project experience and resume content for 
+systematic-debugging	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	4-phase root cause debugging: understand bugs before fixing.
+ui-token-remediation	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 按 UI 规范整治前端样式：先审计再分刀。
+ui-wireframe-mockup	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 给评审或领导出 UI 线框图（HTML → PNG）。
+used-apple-device-verification	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	二手 Apple 设备（MacBook/iPhone/iPad）验机清单与防坑。当用户购买/接收二手 Mac 或 iOS 设备、需要验机（真
+vivo-cms-data-pull	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 从 vivo CMS 的 BI 看板或在线文档取数。
+vivo-design-updates	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 做vivo外销CMS产品设计(用户行为字段/好友列表改版/系统交互流程图)时补最新定稿口径。
+vivo-private-domain-monthly	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	外销私域月度盘点取数（WhatsApp 好友与账号）。
+vivo-project	共享	入库（VPS→仓库）	productivity	有	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	vivo 外销项目工作（CMS / 导购工作台 V销冠 / 企业微信 / 预售版本）+ 工作日报(PDCA)写作规则。当任务涉及 vivo 
+web-app-to-apk	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	把现有 Web 应用（React/Vite 等）打包成自用 Android APK——方案选型、Mac 安卓环境搭建、Capacitor 打
+web-article-reading	共享	入库（VPS→仓库）	research	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	读取用户发来的网页/文章或截图（尤其中文平台如微信公众号 mp.weixin.qq.com）做总结或讨论——链接走 web_extract 
+web-deployment-debugging	共享	入库（VPS→仓库）	software-development	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	>
+weekly-review-planning	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Weekly reset: commitments, stalled work, next-week plan.
+wiki-doc-delivery	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Markdown 粘到 Confluence/语雀显示不走样：语法边界、图片内嵌、转换验证。
+windows-desktop-user-setup	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	帮用户适应公司 Windows 电脑（尤其他从 Mac Retina 迁移过来、且视障对清晰度敏感）——显示/DPI/PPI 排查、Clea
+windows-pc-accessibility-setup	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	帮视障用户上手 Windows 工作机——DxDiag 读硬件/屏幕、混合 DPI 发虚根因与修复、放大文字护眼配置、以及用户平台切换(如 
+work-daily-report	共享	入库（VPS→仓库）	productivity	无	产出物为文档/代码/前端/方法论，本地 agent 同样要跑	Use when 要写工作日报。P/D/C/A 四段，严格回扣，只认交付物。
+model-provider-cost-and-quota	待定	待你判定	software-development	无	未归类，需人工判定	Use when 查/比模型供应商额度与价格、续费与视觉选型。
+grill-me	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+old-system-ui-clone	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+pm-discovery-dialogue	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+pm-handoff	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+pm-research	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+pm-to-questionnaire	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+pm-to-spec	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+simplify	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+taste-review	本地agent专属	保留在库，VPS 不取	-	有	只在你 Mac/Windows 上给本地 agent 用，VPS 没有	保留，不要动
+agent-skills-library	杰西卡专属	留在 VPS，不入库	productivity	有	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	维护用户agent技能库(pmlophy-skills聚合+软链5agent)。加/迁移/软链skill时用。
+document-analysis-with-subagents	杰西卡专属	留在 VPS，不入库	(root)	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	用 delegate_task 子 Agent 批量分析大量文档(5+份 docx),原文不怼进主会话,每个 Agent 只返回精炼摘要。
+email-inbox-triage	杰西卡专属	留在 VPS，不入库	email	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Triage an inbox: prioritize threads, draft replies safely.
+feishu-open-platform	杰西卡专属	留在 VPS，不入库	integrations	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	飞书开放平台集成——企业自建应用推送消息（token/收件人ID/权限/卡片）的实战路径与坑。当任务涉及"给飞书发消息/推卡片/查用户ID/
+feishu-open-platform-integration	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	飞书开放平台集成（企业自建应用/消息推送/身份ID）——账号类型与ID体系、凭据与权限、消息卡片、实测踩坑。当任务涉及飞书API、机器人推送
+feishu-open-platform-push	杰西卡专属	留在 VPS，不入库	(root)	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	飞书开放平台企业自建应用推送打通——token获取、im/v1/messages发卡片、open_id/user_id坑、权限粒度、API调
+feishu-push-integration	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	给自建系统接入飞书消息推送的选型与踩坑——个人账号 vs 企业账号、自建应用可用范围、user_id/open_id 权限矩阵、webhoo
+hermes-agent	杰西卡专属	留在 VPS，不入库	autonomous-ai-agents	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Use, configure, theme, extend, and orchestrate Hermes Agent.
+hermes-api-debug	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Diagnose Hermes API Server connectivity issues from web frontends — ne
+hermes-feature-troubleshooting	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Hermes 功能排查——桌面App/模型切换/记忆插件/Provider配置等涉及Hermes自身能力的问题,先查官方文档+源码,不准猜不
+hermes-performance-tuning	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Diagnose and fix Hermes Agent bloat — skill bloat, context injection o
+hermes-rescue-panel	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Build, deploy, and maintain the Hermes model-rescue web panel — an ind
+holographic-memory-usage	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Holographic 记忆系统的正确用法（官方源码实证，非猜测）。当需要存取 Hermes 记忆（fact_store）、判断"该用 me
+inspecting-hermes-desktop-dom	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Read the live Hermes desktop DOM/CSS over CDP.
+jarvis-dev	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Jarvis (贾维斯) web console development, deployment, and debugging — ngin
+n8n-workflow-automation	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	自托管 n8n 自动化平台——部署(独立子域名反代,避开子路径双重路径坑)、systemd 守护、工作流闭环验证(HTTP API→后端→D
+notes-vault	杰西卡专属	留在 VPS，不入库	note-taking	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	用户个人笔记库（Obsidian + Git 双向同步 Mac↔VPS）的搭建与维护——六盒分类、统一模板、Git 同步纪律、杰西卡补充整理
+notes-vault-ops	杰西卡专属	留在 VPS，不入库	note-taking	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	路飞的 Git 同步 Obsidian 知识库运维——Mac(Obsidian) ↔ GitHub(notes-vault) ↔ VPS(/
+personal-styling-advice	杰西卡专属	留在 VPS，不入库	personal	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Use when 用户问穿搭搭配或发穿搭照片。结论先行、分层给色、讲冲突。
+petdex	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Install and select animated petdex mascots for Hermes.
+proxy-server-setup	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Install, configure, and troubleshoot proxy/VPN/tunneling server nodes 
+sdlc-review	杰西卡专属	留在 VPS，不入库	devops	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Review Kanban handoffs and route verified outcomes.
+session-handoff	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Use when 用户 /new 或说"接上"时——交接落盘与新会话状态重建。
+tui-widgets	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Author live widget apps for the Hermes TUI dock.
+user-messaging-format	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	杰西卡发给路飞的聊天消息格式标准——禁用 Markdown、列表渲染成表格、结论先行、简洁可读。
+volcengine-realtime-voice	杰西卡专属	留在 VPS，不入库	software-development	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	接入豆包/火山端到端实时语音大模型（S2S，语音进语音出，全双工打断）——WebSocket 二进制协议、握手头、事件流、PCM 音频帧、人
+vps-administration	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	Manage, monitor, and maintain a Linux VPS — system health checks, disk
+vps-git-push-setup	杰西卡专属	留在 VPS，不入库	(root)	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	VPS 配置 GitHub SSH push 权限——生成 ed25519 key + 用户 Mac 添加公钥 + git remote 配
+vps-hermes-migration	杰西卡专属	留在 VPS，不入库	productivity	无	依赖 VPS/Hermes 本体/飞书通道/我的记忆与会话	把 Hermes Agent 从一台 VPS 无缝迁移到另一台 —— 打包家当、传输、装本体、恢复数据、切网关，尤其是 cutover 时补
