@@ -150,3 +150,17 @@
 - 不擅自全量覆盖。入库只搬「共享」档，且搬之前先看 `SKILLS-归属清单.tsv` 的「建议动作」列。
 - 仓库里已有的「本地 agent 专属」条目不许被 VPS 版本覆盖或删除。
 - 内容更新（非目录增删）pull 完即生效，Windows 不用跑 `sync-skills-windows.bat`；只有 skill 目录增删改名才需要重建 Junction。
+
+## Skill 命名前缀（2026-11-09 定）
+
+名字本身带归属，不靠查清单：
+
+| 前缀 | 归属 | 例子 |
+|---|---|---|
+| `hermes-` | 杰西卡 / VPS Hermes 专属 | hermes-rescue-panel、hermes-feature-troubleshooting |
+| `local-` | 本地 agent 专属（Mac/Windows 的 Cursor、Codex、反重力） | local-pm-handoff、local-grill-me |
+| 无前缀 | 通用，两边都用 | prd-doc-authoring、a2a-instruction-format |
+
+本地同步只需一句判据：**同步 `local-` 开头 + 无前缀的，跳过 `hermes-` 开头的。**
+
+改名注意：skill 之间会互相引用名字，改名后要 `grep -rl '<旧名>'` 扫全库改引用；Windows 上逐 skill Junction 的目录名要跟着改，必须重跑 `sync-skills-windows.bat` 重建链接。因此新 skill 从起名就守规范，存量分批改。
