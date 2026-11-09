@@ -176,8 +176,16 @@
 | TRAE | `~/.trae/skills`、`~/.trae-cn/skills` |
 | WorkBuddy | `~/.workbuddy/skills`、`~/.workbuddy-ai/skills` |
 | 反重力 Antigravity | `~/.gemini/config/skills`（全局用户技能；`builtin/skills` 是官方内置，别动） |
-| Qoder | 待确认（只见内置 security-resources） |
+| Qoder | **`~/.claude/skills`（与 Claude Code 共用同一用户级目录）**；项目级 `<项目>/.claude/skills`、`<项目>/.qoder/skills`；应用包内 `Qoder.app/Contents/Resources/*/skills` 是内置，别动 |
 
 不要动的目录：`builtin/*`、`design_libraries/*`、`connectors/*`、`security-resources/*`、`memories/*`、`tests/*`，以及项目自带的 `<项目>/skills`。
 
-同步：`bash sync-skills-mac.sh --discover` 先看，确认后 `bash sync-skills-mac.sh --auto ~/.gemini/config/skills`。
+同步：
+
+```
+bash sync-skills-mac.sh --discover                        # 1 先看会链到哪些目录
+bash sync-skills-mac.sh --auto ~/.gemini/config/skills --dry-run   # 2 演练
+bash sync-skills-mac.sh --auto ~/.gemini/config/skills            # 3 真跑
+```
+
+如果某个 agent 目录里已有**同名真实目录**（不是软链），默认会跳过不覆盖；要把它们统一成软链，加 `--replace-real`——它会先备份到 `~/.agents/_backup-skills-<时间戳>/` 再替换，原内容不会丢。

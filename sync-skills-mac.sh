@@ -18,12 +18,14 @@ REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 DRY=0
 DISC=0
 AUTO=0
+REPLACE=0
 HUBS=()
 for a in "$@"; do
   case "$a" in
     --dry-run) DRY=1 ;;
     --discover) DISC=1 ;;
     --auto) AUTO=1 ;;
+    --replace-real) REPLACE=1 ;;
     *) HUBS+=("$a") ;;
   esac
 done
@@ -103,6 +105,8 @@ total_created=0
 total_refreshed=0
 total_skipped=0
 total_removed=0
+total_replaced=0
+_BACKUP_DIR="$HOME/.agents/_backup-skills-$(date +%Y%m%d-%H%M%S)"
 
 for HUB in "${HUBS[@]}"; do
   echo "== 处理 ${HUB/#$HOME/~}"
@@ -112,6 +116,7 @@ for HUB in "${HUBS[@]}"; do
   refreshed=0
   skipped=0
   removed=0
+  replaced=0
 
   while IFS= read -r skill_md; do
     src="$(dirname "$skill_md")"
@@ -125,8 +130,21 @@ for HUB in "${HUBS[@]}"; do
       fi
       refreshed=$((refreshed + 1))
     elif [ -e "$dst" ]; then
-      echo "  跳过（同名真实目录，不覆盖）: $name"
-      skipped=$((skipped + 1))
+      if [ "$REPLACE" = "1" ]; then
+        bk="$_BACKUP_DIR/$name"
+        if [ "$DRY" = "0" ]; then
+          mkdir -p "$_BACKUP_DIR"
+          mv "$dst" "$bk"
+          ln -s "$src" "$dst"
+          echo "  已备份并替换为软链: $name -> 备份在 $_BACKUP_DIR"
+        else
+          echo "  [演练] 将备份并替换为软链: $name"
+        fi
+        replaced=$((replaced + 1))
+      else
+        echo "  跳过（同名真实目录，不覆盖，可加 --replace-real）: $name"
+        skipped=$((skipped + 1))
+      fi
     else
       if [ "$DRY" = "0" ]; then ln -s "$src" "$dst"; fi
       created=$((created + 1))
@@ -146,13 +164,15 @@ for HUB in "${HUBS[@]}"; do
     esac
   done < <(find "$HUB" -maxdepth 1 -type l 2>/dev/null)
 
-  echo "  新建 $created / 刷新 $refreshed / 跳过 $skipped / 清断链 $removed"
+  echo "  新建 $created / 刷新 $refreshed / 替换真实目录 $replaced / 跳过 $skipped / 清断链 $removed"
   total_created=$((total_created + created))
   total_refreshed=$((total_refreshed + refreshed))
   total_skipped=$((total_skipped + skipped))
   total_removed=$((total_removed + removed))
+  total_replaced=$((total_replaced + replaced))
 done
 
 echo "----------------"
-echo "合计：新建 $total_created / 刷新 $total_refreshed / 跳过 $total_skipped / 清理断链 $total_removed"
+echo "合计：新建 $total_created / 刷新 $total_refreshed / 替换真实目录 $total_replaced / 跳过 $total_skipped / 清理断链 $total_removed"
+if [ "$total_replaced" -gt 0 ]; then echo "被替换的旧目录已备份到: $_BACKUP_DIR"; fi
 echo "完成。若某个 agent 不读上述目录，把对应目录加进它的 skill 搜索路径即可。"
