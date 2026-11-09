@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>新媒体自动化工作台</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f0f2f5;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 24px 16px;
+  }
+  .container { max-width: 640px; width: 100%; }
+  h1 { font-size: 22px; color: #1f2329; text-align: center; margin-bottom: 4px; }
+  .subtitle { text-align: center; color: #8a9099; font-size: 13px; margin-bottom: 24px; }
+  .card {
+    background: #fff; border-radius: 12px; padding: 24px; margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  .card h2 {
+    font-size: 17px; color: #1f2329; margin-bottom: 16px; padding-bottom: 12px;
+    border-bottom: 1px solid #f0f2f5;
+  }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 13px; color: #4e5969; margin-bottom: 6px; font-weight: 500; }
+  .field input, .field textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid #dcdfe6; border-radius: 8px;
+    font-size: 14px; color: #1f2329; background: #fff; outline: none; transition: border-color 0.2s;
+  }
+  .field input:focus, .field textarea:focus { border-color: #3370ff; }
+  .field textarea { min-height: 64px; resize: vertical; }
+  .field .hint { font-size: 12px; color: #8a9099; margin-top: 4px; }
+  .btn {
+    width: 100%; padding: 12px; border: none; border-radius: 8px; font-size: 15px;
+    font-weight: 600; cursor: pointer; transition: opacity 0.2s;
+  }
+  .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .btn-blue { background: #3370ff; color: #fff; }
+  .btn-purple { background: #722ed1; color: #fff; }
+  .btn:active { opacity: 0.85; }
+  .result { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
+  .result.ok { background: #e8f7ef; color: #00b42a; display: block; }
+  .result.err { background: #ffece8; color: #f53f3f; display: block; }
+  .status { text-align: center; font-size: 12px; color: #8a9099; margin-top: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🎬 新媒体自动化工作台</h1>
+  <p class="subtitle">生成选题和口播脚本，结果自动写入飞书表格</p>
+
+  <!-- 区域 1：生成选题 -->
+  <div class="card">
+    <h2>📋 生成 15 个选题</h2>
+    <div class="field">
+      <label for="ref">对标账号数据 / 选题方向（选填——不填用默认）</label>
+      <textarea id="ref" placeholder="例：企业培训账号90天，高播放主题：获客成本真相、投流误区；评论区高频词：成本、效果、怎么做"></textarea>
+      <div class="hint">留空则按默认方向生成 15 个选题，结果写入《每周选题库》</div>
+    </div>
+    <button class="btn btn-blue" id="btnTopics" onclick="generateTopics()">生成 15 个选题</button>
+    <div class="result" id="resultTopics"></div>
+  </div>
+
+  <!-- 区域 2：生成脚本 -->
+  <div class="card">
+    <h2>🎤 生成口播脚本</h2>
+    <div class="field">
+      <label for="type">选题类型 *</label>
+      <input type="text" id="type" placeholder="例：成本计算类 / 平台真相类 / 案例拆解类 / 避坑指南类">
+    </div>
+    <div class="field">
+      <label for="topic">核心主题 *</label>
+      <input type="text" id="topic" placeholder="例：企业培训获客成本真相">
+    </div>
+    <div class="field">
+      <label for="info">关键信息 *</label>
+      <input type="text" id="info" placeholder="例：投5万只换来1个咨询，广告费被平台吃掉了">
+    </div>
+    <div class="field">
+      <label for="action">目标行动 *</label>
+      <input type="text" id="action" placeholder="例：引导私信 / 评论区扣关键词">
+    </div>
+    <button class="btn btn-purple" id="btnScript" onclick="generateScript()">生成口播脚本</button>
+    <div class="result" id="resultScript"></div>
+  </div>
+
+  <p class="status">提交后请稍等 1-2 分钟，结果自动写入飞书表格</p>
+</div>
+
+<script>
+// ====== 配置（Webhook URL——make 场景，交付时按实际场景替换） ======
+var WEBHOOK_TOPICS = "https://hook.us2.make.com/REPLACE_SCENARIO1_WEBHOOK";
+var WEBHOOK_SCRIPT = "https://hook.us2.make.com/REPLACE_SCENARIO2_WEBHOOK";
+
+function show(el, text, ok) {
+  var box = document.getElementById(el);
+  box.textContent = text;
+  box.className = "result " + (ok ? "ok" : "err");
+  setTimeout(function() { box.style.display = "none"; }, 8000);
+}
+
+function generateTopics() {
+  var btn = document.getElementById("btnTopics");
+  btn.disabled = true; btn.textContent = "提交中…";
+  var ref = document.getElementById("ref").value.trim();
+  var body = ref ? { data: ref } : { data: "默认" };
+  fetch(WEBHOOK_TOPICS, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  })
+  .then(function(r) { show("resultTopics", "✅ 已提交！15 个选题将写入飞书《每周选题库》", true); })
+  .catch(function(e) { show("resultTopics", "❌ 提交失败：" + e.message, false); })
+  .finally(function() { btn.disabled = false; btn.textContent = "生成 15 个选题"; });
+}
+
+function generateScript() {
+  var type = document.getElementById("type").value.trim();
+  var topic = document.getElementById("topic").value.trim();
+  var info = document.getElementById("info").value.trim();
+  var action = document.getElementById("action").value.trim();
+  if (!type || !topic || !info || !action) {
+    show("resultScript", "⚠️ 请填写全部 4 个字段", false);
+    return;
+  }
+  var btn = document.getElementById("btnScript");
+  btn.disabled = true; btn.textContent = "提交中…";
+  var body = { data: { type: type, topic: topic, info: info, action: action } };
+  fetch(WEBHOOK_SCRIPT, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  })
+  .then(function(r) { show("resultScript", "✅ 已提交！口播脚本将写入飞书《脚本库》", true); })
+  .catch(function(e) { show("resultScript", "❌ 提交失败：" + e.message, false); })
+  .finally(function() { btn.disabled = false; btn.textContent = "生成口播脚本"; });
+}
+</script>
+</body>
+</html>

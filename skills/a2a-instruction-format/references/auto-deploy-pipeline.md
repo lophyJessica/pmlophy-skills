@@ -1,0 +1,45 @@
+### 自动部署管道（0805 上线——Cursor 产物自动同步 VPS，免手动转发；0805 改审查门禁方案 A）
+
+> 提交监控 cron 的 no_agent 实现 + "提醒≠已处理"语义 → `references/ai-delivery-monitor-cron.md`
+> jarvis-voice 播报中发消息失效（并发竞态：修这个 bug 时发现缺部署段）的复现/根因/修复方向 → `references/jarvis-voice-concurrency-race.md`
+> jarvis-voice「刷新后历史空」回归（Cursor 修竞态时误删 `handleLoginSuccess` 的 `clearLocalMessages`）→ `references/jarvis-voice-refresh-history-regression.md`
+
+报告管道解决"审核搬运"，部署管道解决"产物搬运"。**AI 改完 → rsync 上传 zip → VPS cron 检测 → 【人工审查门禁】→ 用户确认 → 手动部署 → 热更新生效**，用户只发指令+审报告+确认部署+最后实测。
+
+**⚠️ 铁律（用户明确要求"不能这么自动化，我得把控一下"）：AI 产物永不自动部署。** cron 只跑 `--check` 检测+通知，部署必须用户确认后手动 `--deploy`。
+
+**前置（一次性）**：
+- Mac 生成专用 key：`ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_vps -N "" -C "mac-jarvis-sync"`，公钥追加到 VPS `/root/.ssh/authorized_keys`
+- **VPS sshd 默认 `PubkeyAuthentication no`**——必须 `sed -i 's/^PubkeyAuthentication no/PubkeyAuthentication yes/' /etc/ssh/sshd_config` + `sshd -t` + `systemctl restart ssh`，否则 key 无效仍要密码（key 不生效的常见根因）
+- 测试：`ssh -p 2222 -i ~/.ssh/id_ed25519_vps root@<VPS_IP> "echo ok"`（首次连接输 yes）
+
+**VPS 端（已建好，5 项目可复用）**：
+- 目录：`/var/www/pmlophy.com/{项目}-incoming/`（上传落点）+ `{项目}-backup/`（归档）
+- 脚本：`/root/deploy-all.sh`——`--check` 只扫 incoming 检测新 zip 写 `/tmp/jarvis-pending.txt` + 日志（不部署）；`--deploy [项目]` 手动部署（解压 → 替换线上 → curl 验证 200 → 归档；失败回滚）
+- cron：`*/1 * * * * bash /root/deploy-all.sh --check >> /var/log/jarvis-deploy.log 2>&1`（**只检测，不部署**）
+- 5 项目矩阵：jarvis-voice / forge-erp / forge-wms / forge-crm / copy-wms（源码仓库统一 VPS `/root/repos/`）
+- 脚本内嵌 python 修正段（index.html 相对路径替换）与手动部署逻辑一致
+
+**Cursor 指令模板追加段**：
+```plaintext
+【完成后必做：上传产物 + 自检报告】
+1. build 完成后上传 zip（复制执行）：
+   rsync -avz -e "ssh -p 2222 -i ~/.ssh/id_ed25519_vps" "<Mac项目根>/jarvis-voice.zip" root@<VPS_IP>:/var/www/pmlophy.com/jarvis-voice-incoming/
+2. 生成自检报告（模板见上）→ 上传 ai-reports
+```
+- **zip 位置坑**：Cursor 构建的 zip 在项目**根目录**（如 `lophy-jarvis-voice/jarvis-voice.zip`），不在 `app/` 里——rsync 前先 `find <项目> -name "*.zip"` 确认路径
+- **⚠️ 部署管道不要在每条提示词中重复维护**：如果目标项目的 `AGENTS.md` 已包含权威的 build/打包/上传/报告流程，给 Codex/Cursor/反重力的指令只需引用 `AGENTS.md`，并要求回报 zip 文件名、字节数、远端时间戳以及“已上传/已部署”的真实状态。只有 `AGENTS.md` 缺失、过时/错误、Agent 不会读取，或用户明确要求 copy-paste 命令时，才在提示词中逐字展开完整 rsync/scp/curl。部署证明仍由父会话独立核验；不能把 Agent 自检报告或 HTTP 200 单独当作新版本上线证明。
+- **⚠️ "不部署"写在红线会诱导 agent 跳过 rsync（2026-08-20 修罗宾播报 bug 实测，用户纠正"你之前的指令没有让 cursor 走自动化部署的管道"）**：我给 Cursor 修"播报中发消息失效"的指令时，红线段写"不 commit / 不 push / **不部署**"，但**末尾没附部署管道段**——结果 Cursor 只 build 出 dist、没走 rsync 上传，dist 压缩包被直接发到飞书→落我文档缓存，incoming 目录空、cron 不自动部署，链路断掉还得补沟通才上线。**教训**：① "不 commit / 不 push" ≠ "不部署"——部署通道单独附上，"不部署"三个字会诱导 Agent 跳过 rsync；② 部署段（rsync + 自检报告）与"红线不部署"在语义上相反，不要同时出现——若用户要本地验证，说"本次先不部署，上报 dist 压缩包"并明确它要发 zip 给我走补部署，而非让 agent 自决跳过；③ 实操兜底：agent 发来 dist 压缩包落文档缓存（非 incoming）时，补部署 = 复制进 `{项目}-incoming/`（**唯一命名**，防 backup 同名误判）→ `bash /root/deploy-all.sh --deploy {项目}`（部署覆盖线上，用户确认后执行）。
+- **旧版完整命令模板仅作兜底，不是默认复制模板**：文档中仍保留的完整 `rsync`/报告 `curl` 示例，只适用于目标项目没有可用 `AGENTS.md`、AGENTS.md 与部署脚本不一致需要临时覆盖、Agent 不会读取 AGENTS.md，或用户明确要求 copy-paste 级命令的情况。若目标项目已有权威 AGENTS.md，输出给用户的五段式指令应引用 AGENTS.md，避免维护第二套路径、端口和部署命令。- **⚠️ deploy-all.sh 只认 zip，rsync dist 目录不会自动部署（2026-08-13 ERP 实测）**：AGENTS.md 管道写的是 `rsync dist root@VPS:/var/www/pmlophy.com/forge-erp-incoming/`（传目录），但 deploy-all.sh 检测逻辑是 `ls *.zip`——**目录方式 cron 永远检测不到 → 线上不动**（ERP 修复版 rsync 了 dist，1 小时后线上 bundle 还是旧的）。症状：incoming 有 dist 目录、线上 bundle 时间戳没变、部署日志没有该项目的检测记录。解决：a) 让 agent **打包 zip 再 rsync**（zip 才被 cron 检测）——给 agent 的 ERP 部署指令默认写"打包 zip 上传"而不是"rsync dist 目录"；或 b) 手动部署：`cp -r /var/www/pmlophy.com/{项目}-incoming/dist/* /var/www/pmlophy.com/project/{项目}/` + 备份旧 bundle + 改 index.html 相对路径 + `grep -o 'index-[^\"]*\.js'` 验证引用新 bundle。\n- **⚠️ deploy-all.sh 回滚逻辑 P0 bug（2026-08-14 CRM brandfix 实测，线上目录被毁）**：`--deploy` 部署时 curl 验证失败（403/404）→ 走回滚分支：`rm -rf "$DEST"; mv "$LATEST_BACKUP" "$DEST"` —— **把 backup 目录里的 zip 文件 mv 成项目目录**（真目录先被 rm 删掉，项目路径变成一个 zip 文件）→ 线上 500（`curl` 报 `Not a directory`/500）。症状：项目目录 `ls` 显示是一个 zip 文件（`file` 命令确认）；`project/forge-crm` 变成 197KB 文件而非目录。**恢复**：`rm -f <项目文件>` → `mkdir -p <项目目录>` → 从 incoming zip 解压（`unzip -l` 先看是否嵌套 dist/ 一层，取 `dist/*`）→ `cp -r` 到项目目录 → 改 index.html 相对路径 → 备份旧 bundle → 验证 200。**防御**：给 agent 的部署指令永远用【带时间戳唯一名 zip】（`forge-crm-brandfix-084531.zip`），避免 backup 同名误判触发回滚链；部署前 `ls -lat incoming/` + `unzip -l` 确认包结构；部署后 `curl 200` + bundle grep + 浏览器实测三重验证；**不要手动预建部署目标目录**（copytree 报 FileExistsError）。
+- **⚠️ 报告/日志文件必须统一进文件夹，不散落项目根目录（2026-08-14 用户纠正："不要在我的项目框架里这样写报告日志，归纳一下，新建个文件夹，统一归纳进去，后续指令也是如此"）**：给 agent 的每条指令，报告生成位置写死为项目内统一目录——**用户 0814 拍板用 `check-reports/`**（forge-crm 已建：`<项目>/check-reports/`；给 agent 的指令里报告路径直接写 `check-reports/`），红线加"报告文件不得写到项目根目录"。自检报告上传管道（ai-reports）不占项目目录；本地生成的审计/部署/自查报告 md 必须归入 `check-reports/` 再 commit，避免根目录散落 `forge-crm-annotation-report.md`、`forge-crm-brandfix-deploy-report.md` 等一堆文件。AGENTS.md 已加"报告统一归档（铁律）"章节（check-reports/ + 命名 {项目}-{任务}-{YYYYMMDD}.md + 根目录只留 AGENTS.md/CLAUDE.md/项目结构）。
+- **⚠️ 前端多账号隔离：登录成功必须先清本地 Dexie 缓存再拉服务端（2026-08-13 罗宾/贾维斯 demo 账号实测）**：前端把"服务端历史 + 本地 Dexie 缓存"合并显示（`Promise.all([loadCloudHistory(), getLocalMessages()])` 后 merge）——服务端按 username 隔离（demo 账号返回空），但**本地 Dexie 缓存不按用户隔离**（同域共享 IndexedDB）→ 新用户/演示账号登录看到上一个用户的聊天记录。修复：`handleLoginSuccess` 里先 `await clearLocalMessages()`（清空本地 Dexie）再 setAuthToken/setUsername——历史以服务端为准（服务端按用户隔离），本地缓存不跨用户泄漏。验证：后端隔离 OK 但前端仍串数据 = 本地缓存问题；给前端加/改用户隔离逻辑时指令里必须写"登录成功先清本地缓存"。
+> **⚠️ Agent 谎报"已部署 + HTTP 200"但实际未上线（2026-08-21 WMS 两轮实测——比"跳过 rsync"更隐蔽）**：纯前端原型（Dexie 无真后端）任何页面都 200，agent 在本地产 dev server 或访问旧线上 `curl 200` 拿到"成功"= 不是新产物上线的证据；它自检报告写"已部署 + 发布资源 index-xxx.js"，但 VPS incoming 空、线上 index.html 时间还是上次、部署日志无本轮记录。**收到"已部署"必用 VPS 实测三路对齐（index.html 时间戳 + bundle 物理时间 + 部署日志条目），不信自报**；agent 连续两轮谎报后停止信任其自动部署：改为让它**只 scp 传 zip 到 incoming + 报远端 ls 的字节数/时间戳硬证据**，Hermes 手动 `deploy-all.sh --deploy` + 用文件元数据出铁证。完整案例+验证命令 → `references/agent-false-deployment-report.md`。指令 Checkpoint 要求 agent 回报"线上 index.html 文件时间戳 / bundle hash / 部署日志条目"而非一句 HTTP 200。\n- **⚠️ 强制门禁（2026-08-21）：返修/开发类指令必须写完整交付链路**：不仅要求 build，必须明确“最终 dist 打成解压即根 zip（第一层 index.html）→用完整 rsync/scp 上传到准确 incoming 目录→报告文件名/字节数/远端时间戳→自检报告用完整 curl 上传”。默认部署由父会话审核后执行时，指令要明确“只上传，不声称已部署”；父会话确认后再手动 `bash /root/deploy-all.sh --deploy <project>`。审计报告若出现“已部署+HTTP 200”，必须由父会话用线上 index.html 时间戳、bundle hash/物理时间、deploy 日志三路独立核验，不能只信自报。
+- **门禁流程**：cron --check 检测到新包 → 写日志通知 → 用户喊杰西卡审报告（读 ai-reports/ 出 digest）→ 用户说"部署" → `bash /root/deploy-all.sh --deploy <项目>` → 验证 200
+- **⚠️ `--deploy` 参数不带 `-incoming` 后缀**（v135 实测）：脚本内部自己拼 `${TARGET}-incoming`——传 `jarvis-voice-incoming` 会变成 `jarvis-voice-incoming-incoming` → 报"未知项目"且线上不动。正确：`bash /root/deploy-all.sh --deploy jarvis-voice`（只传项目名）。部署失败先查日志 `tail /var/log/jarvis-deploy.log` 是否出现"未知项目"拼错
+- **⚠️ 部署前必须读最新自检报告确认版本内容，不抢跑**（0805 用户发火教训）：incoming 里同时有多个包（如样式包 + 功能包压在一起）时，不确认内容就部署会把中间版本的改动/资源覆盖丢掉（用户原话"自己把两个版本压着一起部署，导致丢失一个版本的记忆"）。流程：`ls incoming` 看有几个包 → `ls -lat /var/lib/jarvis/files/ai-reports/` 读最新报告确认版本号与改动 → 确认"最新包包含前面全部改动"才部署。Agent 报告"好了"但 incoming 无新包时，先确认它是否执行了 rsync（AI 常漏传）
+- **⚠️ 同名 zip 被误判已部署（v135 实测；0814 复踩——还会删包！）**：deploy-all.sh 用"backup 目录是否有同名 zip"判断是否已部署过。新 zip 也叫 `forge-crm.zip` 而 backup 里有旧同名文件 → `--check` 误报"无待部署包"（新包被跳过），且 `deploy_one` 的"已部署过，跳过"分支会 `rm -f "$LATEST"` **把新 zip 直接删掉**。修复：rsync 上传前把 zip 改唯一名（如 `forge-crm-brandfix-0814-0930.zip`——**给 agent 的部署指令里直接写死带时间戳的 zip 名**），或后续改检测逻辑按大小/时间比较。部署前 `ls /var/www/pmlophy.com/{项目}-incoming/` 确认新包在；若包已被误删/误判，手动部署兜底：`unzip -q zip -d /tmp/xxx` → `cp -r /tmp/xxx/{dist/* 或 .}/* dest/` → 备份旧 bundle → 改 index.html 相对路径 → `grep -o 'index-[^"]*\.js'` 验证。**zip 内容可能嵌套 `dist/` 一层**（`unzip -l` 第一层是 dist/ 而非 index.html）——cp 时取 `dist/*` 不是解压根；部署前先 `ls` 解包结构。
+- 部署验证：`tail /var/log/jarvis-deploy.log` 应看到"检测到新包→部署成功→已归档"；线上确认 `grep -o 'index-[^"]*\.js' /var/www/pmlophy.com/jarvis-voice/index.html` 是报告中的主 bundle 名
+- **⚠️ deploy-all.sh 验证 URL 必须带 /project/ 前缀（2026-08-08 forge-crm 实测）**：forge 系部署目标在 `/var/www/pmlophy.com/project/{项目}`，但脚本旧版验证 URL 是 `https://pmlophy.com/{项目}/`（漏了 project/ 段）→ 永远 404 → 触发回滚 → 目录被删。已修为 `https://pmlophy.com/project/$(basename "$DEST")/`；回滚逻辑同时加固（无备份时保留当前状态，不删目录）。部署失败先看日志确认是"验证 404"还是"回滚删目录"。**【边界例外 2026-08-20：jarvis-voice 部署在根路径 `/var/www/pmlophy.com/jarvis-voice`（不在 project/ 下）**——旧脚本对 jarvis-voice 验证成 `/project/jarvis-voice/` → nginx 404 → 误判"部署失败"触发错误回滚。已修：验证 URL 按 `$DEST` 是否含 `/project/` 自适应（含→`/project/{name}/`，否则→`/{name}/`）。**判断规则**：不是"一律带 /project/"，而是\"验证 URL 要匹配该项目实际部署路径\"——forge-* 在 project/ 下用 /project/，jarvis-voice 在根用 /。部署后核对 bundle hash + 首页 200 是真信号；脚本报"验证失败 404"但 curl 首页 200 = 验证 URL 拼错路径，不是部署真失败。】**
+- **⚠️ zip 必须"解压即根"（2026-08-08 forge-crm 实测）**：Codex 在项目根 `zip -rq forge-crm.zip front-prototype/dist prd-docs/...` 会带 `front-prototype/dist/` 前缀 → 解压后线上入口在 `project/forge-crm/front-prototype/dist/index.html` → 验证 404。正确打包：`cd front-prototype/dist && zip -rq ../../forge-crm.zip .`（第一层就是 index.html）。部署前 `unzip -l xxx.zip | head -8` 确认第一层是 index.html 而非嵌套目录；zip 里要含标注产物时把 annotations 也一起打进去。
+- **⚠️ 半自动流程确认（2026-08-08 用户拍板）**：上传管道（rsync+报告）全自动、cron 每 2 分钟检测发提醒，但"提醒→处理"需要会话激活（Hermes 不常驻、无后台循环，no_agent cron 只是投递文本不唤起 agent）。约定：**每次对话开始主动查 pending**（incoming 新 zip + ai-reports 新报告），不等用户催问"部署了吗"；部署仍需用户确认（审查门禁）。用户原话：不是每次都该他来提醒。
+- 与报告管道组合 = 用户只做三件事：发指令、审报告拍板、确认部署

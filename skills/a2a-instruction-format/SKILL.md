@@ -9,9 +9,57 @@ trigger:
 
 # A2A Instruction Format (五段式)
 
+## 移植模板前先核目标工程，不发带疑问的指令
+
+拿现成模板（课程/历史指令/别人的提示词）改写时，模板里的**技术约束节最危险**：它常常与当前工程相反（典型：模板规定「只用原生 HTML，禁 React/构建工具」，而产物要进 React+antd 原型工程）。规则：
+
+1. 发之前先查目标工程的栈与产物落点（package.json、路由、目录约定），逐节比对模板，冲突的节当场改掉。
+2. **不许把「这条好像不对」写成结尾的一个问题推给用户**——那等于让用户替你核。有疑虑就发之前问清。
+3. 工具选择类约束（浏览器/agent/插件）必须写「唯一允许项 + 禁用清单」两条，只写前者不够：实测只写「用 Cursor 内置浏览器」时，agent 会去装 ego lite 或 Playwright 替代。
+4. 产物要进现有工程时，把「不新建工程、不装依赖、不改 package.json、不动已有页面」写成红线。
+
+## 指令里绝不写 git 命令（用户铁律）
+
+用户代码提交一律自己在 Cursor / Antigravity 界面点，我方只提供 **commit 备注文本**。给 agent 的指令里出现 `git add` / `git commit` / `git push` 是违规，即使项目 AGENTS.md 没有写这条限制也不许加。
+
+为什么：`git add -A` 会把工作区里**别人的**未提交改动一起卷进同一个提交（多为文档侧改动），而 agent 只看得见自己改的那几个文件，它编的备注与实际提交内容对不上，事后无法追溯。
+
+正确写法：指令红线里固定加一句「不要执行任何 git 命令，不 add 不 commit 不 push，改完把改动文件清单告诉我」。
+
+**例外：push 当交付通道时。** 交付物是「生成器脚本 + 它跑出来的成品」（如 PPTX/PDF 生成器）且需要对方拉下来复跑回归时，push 本身就是交付动作，指令里可以要求 agent 提交并 push。条件三条：必须逐文件 add（禁 `git add -A`）；提交备注按用户口径写短；push 后把提交号报回来。需要用户提交时，在代码块外单独给一段可直接粘贴的备注。
+
+## 临时文件与产出物：固定写进每条指令的红线
+
+每条指令的「红线禁止」里固定加两条，不要依赖项目 AGENTS.md 碰运气：
+
+1. 过程中生成的 `.tmp/` 临时脚本、中间截图、日志只算执行过程，**任务完成前必须删除**。
+2. 需要长期保留的报告与截图必须归档到规定目录，**不得留在 `.tmp/`**；清理前先确认目录里其他文件的来源，不得误删用户文件。
+
+原因：沙箱写入受限时 agent 会先写到 workspace 临时位置再复制到目标路径，临时件经常被留在原地，而用户只看得到“已生成”的自报。用户已在项目 AGENTS.md 固化这条规则，指令层再写一次，避免换项目就丢。
+
+## 指令里给出的"原值"就是契约，未字节级核对过不许下发
+
+要 agent 把某个值改回“原样”时，你写的那个字符串会被逐字写进代码，写错了就变成你亲手让它造假。**下发前自己从仓库里读真实字节核一遍**：`git show <commit>:<path> | sed -n '<行>p' | od -An -c` 或 `xxd`，不要拿聊天窗口里渲染出来的文本当原文（长数字串会在显示层被打码成 `+861****8295` 这类假形态）。核对完把“这个值是从哪个提交、哪一行读出来的”写进 Context，agent 就不会拿不准时自作主张。**另一条同源规矩：指令内部不许自相矛盾**——若红线写“不许带星号”、取值列表里却带着星号，正确行为是 agent 停下来问（这算它做对了），你要当场承认是下发错并重发一份干净的，不要让它自己猜。
+
+**负向测试/故障注入类指令必须指定临时输出路径**：让 agent 验证“脚本能不能拦住错误”时，若不指定 `--output /tmp/xxx`，它会把残缺产物写到正式交付文件上（实测：缺一张图时直接把正式发布版覆盖成残品）。指令里把输出路径写成 /tmp，并加一句“测完恢复现场”。
+
+验收 agent 交回的产物时按 `references/agent-output-verification.md` 走：抄旧值冒充重判、卡在上一轮反复吐旧产出物、主观列口径漂移、脚本自动匹配只能当对照——四类失败各有识别方法与指令侧预防写法。
+
+## 分批长任务：列结构与判定口径必须在第一批定死
+
+把一个大活拆成多个 agent/多轮跑时，**第一批就要把输出格式的全部列和每一列的判定口径写清**，后续批次逐字沿用。中途发现缺列再加，前面已交付的批次得全部返工补判（真实代价：前几页产出后才发现缺“是否可配”列，又多开一轮轻量指令逐行补）。
+
+配套两条：
+- 先跑 2-3 页的“样张”让用户验粒度与写法，验过再铺开；不要一上来就全量铺。
+- agent 交回来的清单不能只看它自报的行数与结论，要跑脚本核：列数、每条依据的文件是否存在/行号是否越界、每单位行数是否合理、有无重复行。自报“全部完成”不等于真的对。
+
 ## 沙箱限制：Codex 起不了 dev server，验收写 ego lite
 
-Codex CLI 的 workspace-write 沙箱禁止本地端口监听（Vite 返回 `EPERM`），**换端口无效**——这是 sandbox 策略不是系统权限。派「浏览器验收」任务时：dev server 由用户在终端自己起，agent 不许尝试启动或绕过；验收改用 ego lite（独立 Mac 应用，不走 Codex 沙箱），指令写明「先执行 `ego-browser skill` 看用法」。ego lite 报 `Failed to start ego lite / retry with Full Access` 时让用户在应用里给足权限。另外 agent 的 skill 目录要定期对库：`comm -23 <(ls 库/skills|sort) <(ls ~/.codex/skills|sort)` 应为空，缺链逐条 `ln -sfn` 补。
+Codex CLI 的 workspace-write 沙箱禁止本地端口监听（Vite 返回 `EPERM`），**换端口无效**——这是 sandbox 策略不是系统权限。
+
+**联网同样默认被掐，且报错会伪装**：macOS 的 seatbelt 无条件设 `CODEX_SANDBOX_NETWORK_DISABLED=1`，在 `~/.codex/config.toml` 里写 `[sandbox_workspace_write] network_access = true` 会被**静默忽略**，于是 `git fetch/pull/push`、`npm install`、调外部 API 全部失败，还常报成「写不进 `.git/FETCH_HEAD`」「权限不足」这类误导形态——别顺着报错去查文件权限。确实需要联网的那一次会话，只能用 CLI 参数启动：`codex --sandbox danger-full-access`（只改 config.toml 的 `sandbox_mode` 不生效）。**默认不要为它改配置**：git 拉推、装依赖、起服务由用户在自己终端跑，agent 只负责改文件与跑构建；指令里也不许写「你自己想办法绕过沙箱」。派「浏览器验收」任务时：dev server 由用户在终端自己起，agent 不许尝试启动或绕过；验收改用 ego lite（独立 Mac 应用，不走 Codex 沙箱），指令写明「先执行 `ego-browser skill` 看用法」。ego lite 报 `Failed to start ego lite / retry with Full Access` 时让用户在应用里给足权限。另外 agent 的 skill 目录要定期对库：`comm -23 <(ls 库/skills|sort) <(ls ~/.codex/skills|sort)` 应为空，缺链逐条 `ln -sfn` 补。
+
+**同一个沙箱还会掐掉联网**：macOS seatbelt 无条件设 `CODEX_SANDBOX_NETWORK_DISABLED=1`，在 `config.toml` 写 `[sandbox_workspace_write] network_access = true` 会被静默忽略（官方 issue 长期未修）——所以 `git fetch/pull/push`、`npm install`、curl 一类在 Codex 会话里都可能失败，报错还常落到写文件上（如 `.git/FETCH_HEAD` 写不进），看着像权限问题其实是断网。**指令里不要给 Codex 派带网络的动作**：git 的 pull/commit/push 一律留给用户自己跑，agent 只改文件、最多跑本地构建。确实需要联网的那一个会话才临时用 `codex --sandbox danger-full-access` 启动（命令行参数才生效，改 config 不够），不要改默认配置。
 
 ## 原型/前端类指令：必带的两条（2026-10-23 用户定，漏了会被当场指出）
 
@@ -166,6 +214,10 @@ Codex CLI 的 workspace-write 沙箱禁止本地端口监听（Vite 返回 `EPER
 - 回复多条并行指令时，**一条一条分块给、块首写归属**，不要混成一大段——混在一起用户不知道复制哪段给谁。
 - 用户在会话中插入新任务时，**先重排路由表再给正文**（谁的手上现在几条、哪条先停）。
 
+**并行会不会抢资源：把约束写进指令就够了，不要在回复里另加一段注意事项。** 用户问「两个一个跑 A 一个跑 B 会不会抢图/抢文件」时，正确的回答就是「不会，两条指令里已经各自写死了输出文件名」——不要再列一、二、三三条风险清单（实测会被回一句「你在两个指令中指定好文件名不就行了吗」）。
+
+判「会不会撞」只看两件：① 是否写同一个输出文件（给每条指令写死唯一输出文件名就解决）；② 是否回写共享输入（在红线里写「不许回写 / 不许改源文件」就解决）。**多份指令只读同一份输入目录不构成冲突**，不需要为它加任何额外防护。
+
 ## 先分清「用户在派活」还是「用户在叙述」——不确定先一句确认
 
 用户消息常是**分段打字**：前一段是背景，后一段才是真要求（“我先把 cursor 跑起来” / “你先沉淀下记忆” 这类）；也可能一句话里同时在说他**已经让 agent 在做的事**。看到「改一下这个 html，让他加上交互效果」这类话，不要立刻产出一整份五段式指令——它很可能只是在告诉你 Cursor 正在干什么。
@@ -194,7 +246,7 @@ Codex CLI 的 workspace-write 沙箱禁止本地端口监听（Vite 返回 `EPER
 
 现实场景里指令发出后 agent 很快就开始跑了，**回头修改原指令 = 无效操作**（对方按旧版在跑，改了也看不到）。所以：
 
-> **补条目就重发整份，不发碎片（2026-11-04 用户发火：「给我全量的指令，说过N次了」）**——发现自己漏了两条要加，正确做法是把新增条目合进去重出一整份完整口令，不是发「这两段接在原来第 6 条后面」。拼接成本不该转嫁给用户，他要的是直接复制就能跑的东西；碎片一多就容易贴错位置或贴反。规矩：凡对同一份指令做了任何增补，一律重发全量版，并在块外一句说明「上面是完整口令，一次复制」。给 Cursor / Codex / 反重力 / Qoder 的任何指令同样适用。
+**补条目就重发整份，不发碎片（2026-11-04 用户发火：「给我全量的指令，说过N次了」）**。发现自己漏了两条要加，正确做法是把新增条目合进去重出一整份完整口令，不是发「这两段接在原来第 6 条后面」。理由：拼接成本不该转嫁给用户，他要的是直接复制就能跑的东西；碎片一多就容易贴错位置或贴反。规矩：凡我对同一份指令做了任何增补，一律重发全量版，并在块外一句说明「上面是完整口令，一次复制」。给 Cursor / Codex / 反重力 / Qoder 的任何指令同样适用。
 
 - 已发出／已开跑的指令**永不修改**；发现前提错、要补内容、要改红线——一律**新起一条指令**，写明“在上一轮基础上追加／纠正”，并显式说明增量范围与“不重复已完成的部分”。
 - 新指令编号连续（如 03 → 04），标题写清本轮增量。
@@ -214,6 +266,7 @@ Codex CLI 的 workspace-write 沙箱禁止本地端口监听（Vite 返回 `EPER
 用户口径是「这个选项根本不存在」时，**留着「不支持提前」「不设提前」等于告诉执行方和评审「这里本该有个字段」**，会引出追问。指令里写死：「凡出现 X 及其实体为空的说明，一律删除，不做不支持说明」。同理「取消某功能」要**整套删**（章节 / 表格行 / 字段 / 用例 / 功能点），不留替代说明、不写取消原因、不写「以后可能要捡回来」的钩子，变更日志只记一句「删除 X」——用户原话「取消就取消了，不要再留尾巴，不做，干么给自己添工作量」。
 - 同一仓库不要同时开两条有写操作的指令（会同改文件）；只读取证型指令也应等前一条跑完再开。
 - **同一需求重发指令时必须点名「以哪条为准、前一条作废」**：连续发两条内容相近的指令（润色重发、补漏重发），用户分不清哪条该跑，会直接问「到底哪一个指令，你刚刚发了我两个」。重发时开头一句写「用最新这条，前一条作废」；内容完全一样就不用重发，只补差异部分。
+- **用户还没跑之前，不要连续迭代同一份指令**。一经发出去还没见他回进度，就自己想到更好的写法、又发一版，再加上一句「前一条作废」——写清了他也照样乱：他会直接问「要不要合并」「你这两个指令有什么不同」「我刚执行了第一个」。每多迭代一版，就多一份“到底跑哪个”的不确定性。规矩：发之前把该查的查完、该问的问完，一次成型；已经发了才想到修正，先攒着不急着发，等这一版跑到一个停顿点再一并给（真要作废，就在**块外第一行**直接写「用这一版，第 N 版起全部作废」，不要让他在几个块里自己找差别）。判据：同一任务同时在用户手上的指令版本，应当永远只有一版。
 - **不同任务的指令连着给时，也必须一句话交代「现在跑哪条、另一条什么时候用」**：一轮里先后发出两条各自独立的指令（一条改文档、一条改原型），用户回头只看到两个代码块，会直接问「两条指令我用哪一个，上还是下」。正确写法：每条指令**块外第一行**标明任务名与先后关系（如「这条是 PRD 收尾的，排在原型验收之后」／「这条是原型的，现在跑」），并在最后一条后面说明另一条的启用时机。尤其当用户中途改过节奏（先文档后原型 → 改成先原型后文档）时，旧那条要么明确标「暂缓」，要么当场重出——留着不标注就是给用户挖坑。
 
 ## Agent Role: 指令命令官 (Commander, NOT Executor)
@@ -405,6 +458,7 @@ agent 的交付报告可以很长、很详实、前半部分完全正确，**却
 2. **不要自己抢着改一段然后留尾巴**：自己改正文、图留给下一次，比不改更差——下一个人得先搞清哪里改过。要么派 agent 一次整套做完，要么自己一次整套做完。
 3. **自检句**：交付前问自己“图跟文字一致吗？发布版重出了吗？”两个都否就是没交付完，不许丢给用户去发现。
 4. **先加载对应 skill 再动手**（用户点名「为什么不用skill？」）：改 PRD 类活走 `prd-backfill` / `prd-doc-authoring`，它们的红线（忠实已实现、最小改动、发布版重生成）直接管到这类遗漏。
+5. **交付脚本 / 自检全 PASS 只证明「内部自洽」，不证明「输入是最新的」**。引用数、图数、残留路径全对得上时，脚本照报 PASS——但图可能已经跟当前原型对不上了。判据：脚本能查的只有关系与数量，查不了“这张图是不是旧版”。所以原型/样式改过之后，先核定受影响图集并重出，再跑交付脚本；没改东西时跑交付脚本 = 空转（生成物逐字节相同、git 无 diff）。
 
 ## Checkpoint 必须分阶段 + 停点 + 验收判据（2026-10-24 用户纠正：「checkpoint 下次不要这么写了，严谨点」）
 
@@ -662,6 +716,23 @@ Vue: VbenAdmin(Shadcn/UI核心,可切AntDesignVue/ElementPlus/NaiveUI适配器) 
 用户原话：「不要修修补补，然后下一次用的时候，还是走这个老路，要能复用」「这个活后面肯定都是要本地 agent 根据定义好的 skill 或者指令直接 sop 出来的，这不是业务需求，是可以被流程化控制做出的产物」。判据：**换个项目、换个 agent、换个人，不改规则也能跑出同样质量的结果**——做不到就不是 SOP，只是这次碰巧搞定。
 
 1. **标准的唯一真源是校验器，不是文档**。文档会被跳过（没人从头读一遍），发版门禁跳不过。所有能机器判的规则全部写进校验脚本，进发版前置；文档只保留判不了的（边界判断、切块原则），并且从属于校验器（是它的说明书，不是另一套规则）。
+
+   **具体形态：域数据（国家/战区/城市/区号/渠道/状态枚举）散落，人工清理必漏**。同一个概念在五个地方各自定义一份时，两轮全仓人工清理之后仍会剩几十处。根治分四层，前三层是整理，**第四层才是防复发**：
+
+   ① **主数据层**——一个目录按域管（组织域：战区/国家/城市/区号；渠道域；状态枚举），每个值只出现一次；
+   ② **派生函数层**——正向反查都要有（按战区取国家、按国家反查战区、按国家取区号、按区号反查国家），未知值返回空串而不是抛错；
+   ③ **种子数据层**——`mock/*.ts` 只能引用主数据、不许写字面量；
+   ④ **守卫脚本**——扫全仓，主数据层以外出现国家名/战区名/区号字面量就报错，挂到 build 脚本最前面（`node scripts/guard-xxx.mjs && tsc -b && vite build`）。
+
+   守卫分两档才可用：页面/组件/utils/config 严格档（任何国家名、战区名、区号字面量都禁），`mock/*.ts` 种子数据宽松档（允许国家名作数据值，但战区名与区号仍禁——实测漏网的 `+86` 就是几在页面选项里）。**必须带豁免清单并逐条写理由**。脚本上线前先对当前仓库跑一遍自证「命中 0 项」——不自证就挂 build，一次误报卡死整个构建。
+
+   **但「当前命中 0 项」只证明它能通过，不证明它会拦。每条规则必须做一次阴性对照**：故意造一个应被拦的输入，看它是否真报错、退出码是否非零。尤其当脚本里有默认参数或回退分支时，某个自检项会在正常用法下**恒被跳过**（典型：默认取「上一版」= 输出文件自己，于是「与上一版比大小」这一项永远判不出差异，报告里安静地显示“无上一版可比”），不造用例永远发现不了。看到某项自检输出“跳过/无法比较”，就当它不存在，先修再用。
+
+   **用脚本替换手工流程时，验收判据是「零 diff」不是「跑通了」**：同一输入下脚本生成物应与手工产物逐字节相同（`git status` 干净），这才证明它真能替代手工；若它报 PASS 但生成物出现 diff，说明脚本逻辑与手工口径有偏差，必须查到差异来源再收工。
+
+   **改法上优先「原地不动 + 新增统一入口」，不搬家**：已有唯一真源的文件（如 `tenant.ts`）原地保留并补缺的常量，新建 `masterData/index.ts` 只做 re-export 汇总、原有导出一律不删不改名，页面从入口引用——现有 import 路径全不用动，改动面从几百处降到十几处。搬家式重构（把定义全部迁到新目录）把风险放大到全仓。
+
+   **生产取证快照不当脏数据清**：从生产环境抓下来的数据文件（标签树、组织树快照）里出现「字典里没有」的值是正常的——那反映生产真实取值，删掉等于篡改取证。这类文件进豁免清单，并在报告里单列一节「它的取值维度与我们的字典不是一套，以谁为准待业务定」——这是口径问题，不是清理问题，清完也还在。
 2. **见一个雷头修一个 = 人肉门禁，不算 SOP**。上线点到问题才反手修，说明门禁层缺这道口子。每修一个线上问题必须当场回答「这条规则进校验器了吗」——没进就等于下次还会犯；只补文档不算。
 3. **可复用包四件，缺一件就会回到老路**：① 契约（一页纸，写清边界/切分原则/产物形态，**不含任何项目细节**）；② 样板块（一个填好的完整样例，作者照拄结构——比读二十条规则准）；③ 校验器（判据全部可执行，报错指到具体哪项）；④ 参数化指令模板（换项目只填 2–3 个参数：项目路径、套件目录、范围清单）。
 4. **分工：判断归我，产出归 agent**。我定规格、定判据清单、定流程步骤与每步验收判据；agent 负责写契约文档、写校验器代码、写模板、拿它量修存量内容；我只做独立核验。例外只有一类：线上已坏需要立刻止血——那种情况可以自己动手，但事后必须由 agent 补正式实现并进校验器，不能停在手工修好的状态。
@@ -683,6 +754,7 @@ Vue: VbenAdmin(Shadcn/UI核心,可切AntDesignVue/ElementPlus/NaiveUI适配器) 
 - [ ] **第一行有基线提交号，且本轮只有一个写手**（见「一个写手 + 基线提交号」节）
 - [ ] **旧口径清单是全仓 grep 出来的，不是从报告里摘的**
 
+- [ ] **指令里要求 agent「恢复原值 / 照抄这些值 / 按这串字面量改」时，这些值先逐字节核实过**——长号码、ID、卡号在工具回显里会被打码（真实 `+8617675458295` 显示成 `+861****8295`），把它当真发下去，agent 会忠实把不存在的字符写进代码，凭空造出一版假数据再修一轮。核实走 `od -An -c -v` 或 `read_file` 读原文，不读 `grep` 回显；给不出「哪个提交、哪一行、字节读出来」就先别写进指令
 - [ ] **报告/产物落盘路径取自目标仓库 AGENTS.md，不用记忆里的默认值**——各仓库约定不同（cms-project=`08-相关资料/审计报告/` 且禁根目录 check-reports；forge 系=`check-reports/`）。路径写错 agent 会弹卡停下，白跑一轮
 
 - [ ] **上一轮验收确认过的每一项,都已在待发指令里有对应 Request 条目**（1027 用户拍板的口径散在聊天里未进指令,下一轮全漏——见「编排层漏项铁律」节）
@@ -991,51 +1063,10 @@ Checkpoint: build后 strings检查 basename出现次数=1 → 发dist
 
 **用户已验证**：Cursor 改完角标自动上传报告（含文件清单/自检/build 通过/遗留风险），Hermes 读报告出 digest，链路全通。
 
-### 自动部署管道（0805 上线——Cursor 产物自动同步 VPS，免手动转发；0805 改审查门禁方案 A）
+### 自动部署管道（0805 上线）
 
-> 提交监控 cron 的 no_agent 实现 + "提醒≠已处理"语义 → `references/ai-delivery-monitor-cron.md`
-> jarvis-voice 播报中发消息失效（并发竞态：修这个 bug 时发现缺部署段）的复现/根因/修复方向 → `references/jarvis-voice-concurrency-race.md`
-> jarvis-voice「刷新后历史空」回归（Cursor 修竞态时误删 `handleLoginSuccess` 的 `clearLocalMessages`）→ `references/jarvis-voice-refresh-history-regression.md`
-
-报告管道解决"审核搬运"，部署管道解决"产物搬运"。**AI 改完 → rsync 上传 zip → VPS cron 检测 → 【人工审查门禁】→ 用户确认 → 手动部署 → 热更新生效**，用户只发指令+审报告+确认部署+最后实测。
-
-**⚠️ 铁律（用户明确要求"不能这么自动化，我得把控一下"）：AI 产物永不自动部署。** cron 只跑 `--check` 检测+通知，部署必须用户确认后手动 `--deploy`。
-
-**前置（一次性）**：
-- Mac 生成专用 key：`ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519_vps -N "" -C "mac-jarvis-sync"`，公钥追加到 VPS `/root/.ssh/authorized_keys`
-- **VPS sshd 默认 `PubkeyAuthentication no`**——必须 `sed -i 's/^PubkeyAuthentication no/PubkeyAuthentication yes/' /etc/ssh/sshd_config` + `sshd -t` + `systemctl restart ssh`，否则 key 无效仍要密码（key 不生效的常见根因）
-- 测试：`ssh -p 2222 -i ~/.ssh/id_ed25519_vps root@<VPS_IP> "echo ok"`（首次连接输 yes）
-
-**VPS 端（已建好，5 项目可复用）**：
-- 目录：`/var/www/pmlophy.com/{项目}-incoming/`（上传落点）+ `{项目}-backup/`（归档）
-- 脚本：`/root/deploy-all.sh`——`--check` 只扫 incoming 检测新 zip 写 `/tmp/jarvis-pending.txt` + 日志（不部署）；`--deploy [项目]` 手动部署（解压 → 替换线上 → curl 验证 200 → 归档；失败回滚）
-- cron：`*/1 * * * * bash /root/deploy-all.sh --check >> /var/log/jarvis-deploy.log 2>&1`（**只检测，不部署**）
-- 5 项目矩阵：jarvis-voice / forge-erp / forge-wms / forge-crm / copy-wms（源码仓库统一 VPS `/root/repos/`）
-- 脚本内嵌 python 修正段（index.html 相对路径替换）与手动部署逻辑一致
-
-**Cursor 指令模板追加段**：
-```plaintext
-【完成后必做：上传产物 + 自检报告】
-1. build 完成后上传 zip（复制执行）：
-   rsync -avz -e "ssh -p 2222 -i ~/.ssh/id_ed25519_vps" "<Mac项目根>/jarvis-voice.zip" root@<VPS_IP>:/var/www/pmlophy.com/jarvis-voice-incoming/
-2. 生成自检报告（模板见上）→ 上传 ai-reports
-```
-- **zip 位置坑**：Cursor 构建的 zip 在项目**根目录**（如 `lophy-jarvis-voice/jarvis-voice.zip`），不在 `app/` 里——rsync 前先 `find <项目> -name "*.zip"` 确认路径
-- **⚠️ 部署管道不要在每条提示词中重复维护**：如果目标项目的 `AGENTS.md` 已包含权威的 build/打包/上传/报告流程，给 Codex/Cursor/反重力的指令只需引用 `AGENTS.md`，并要求回报 zip 文件名、字节数、远端时间戳以及“已上传/已部署”的真实状态。只有 `AGENTS.md` 缺失、过时/错误、Agent 不会读取，或用户明确要求 copy-paste 命令时，才在提示词中逐字展开完整 rsync/scp/curl。部署证明仍由父会话独立核验；不能把 Agent 自检报告或 HTTP 200 单独当作新版本上线证明。
-- **⚠️ "不部署"写在红线会诱导 agent 跳过 rsync（2026-08-20 修罗宾播报 bug 实测，用户纠正"你之前的指令没有让 cursor 走自动化部署的管道"）**：我给 Cursor 修"播报中发消息失效"的指令时，红线段写"不 commit / 不 push / **不部署**"，但**末尾没附部署管道段**——结果 Cursor 只 build 出 dist、没走 rsync 上传，dist 压缩包被直接发到飞书→落我文档缓存，incoming 目录空、cron 不自动部署，链路断掉还得补沟通才上线。**教训**：① "不 commit / 不 push" ≠ "不部署"——部署通道单独附上，"不部署"三个字会诱导 Agent 跳过 rsync；② 部署段（rsync + 自检报告）与"红线不部署"在语义上相反，不要同时出现——若用户要本地验证，说"本次先不部署，上报 dist 压缩包"并明确它要发 zip 给我走补部署，而非让 agent 自决跳过；③ 实操兜底：agent 发来 dist 压缩包落文档缓存（非 incoming）时，补部署 = 复制进 `{项目}-incoming/`（**唯一命名**，防 backup 同名误判）→ `bash /root/deploy-all.sh --deploy {项目}`（部署覆盖线上，用户确认后执行）。
-- **旧版完整命令模板仅作兜底，不是默认复制模板**：文档中仍保留的完整 `rsync`/报告 `curl` 示例，只适用于目标项目没有可用 `AGENTS.md`、AGENTS.md 与部署脚本不一致需要临时覆盖、Agent 不会读取 AGENTS.md，或用户明确要求 copy-paste 级命令的情况。若目标项目已有权威 AGENTS.md，输出给用户的五段式指令应引用 AGENTS.md，避免维护第二套路径、端口和部署命令。- **⚠️ deploy-all.sh 只认 zip，rsync dist 目录不会自动部署（2026-08-13 ERP 实测）**：AGENTS.md 管道写的是 `rsync dist root@VPS:/var/www/pmlophy.com/forge-erp-incoming/`（传目录），但 deploy-all.sh 检测逻辑是 `ls *.zip`——**目录方式 cron 永远检测不到 → 线上不动**（ERP 修复版 rsync 了 dist，1 小时后线上 bundle 还是旧的）。症状：incoming 有 dist 目录、线上 bundle 时间戳没变、部署日志没有该项目的检测记录。解决：a) 让 agent **打包 zip 再 rsync**（zip 才被 cron 检测）——给 agent 的 ERP 部署指令默认写"打包 zip 上传"而不是"rsync dist 目录"；或 b) 手动部署：`cp -r /var/www/pmlophy.com/{项目}-incoming/dist/* /var/www/pmlophy.com/project/{项目}/` + 备份旧 bundle + 改 index.html 相对路径 + `grep -o 'index-[^\"]*\.js'` 验证引用新 bundle。\n- **⚠️ deploy-all.sh 回滚逻辑 P0 bug（2026-08-14 CRM brandfix 实测，线上目录被毁）**：`--deploy` 部署时 curl 验证失败（403/404）→ 走回滚分支：`rm -rf "$DEST"; mv "$LATEST_BACKUP" "$DEST"` —— **把 backup 目录里的 zip 文件 mv 成项目目录**（真目录先被 rm 删掉，项目路径变成一个 zip 文件）→ 线上 500（`curl` 报 `Not a directory`/500）。症状：项目目录 `ls` 显示是一个 zip 文件（`file` 命令确认）；`project/forge-crm` 变成 197KB 文件而非目录。**恢复**：`rm -f <项目文件>` → `mkdir -p <项目目录>` → 从 incoming zip 解压（`unzip -l` 先看是否嵌套 dist/ 一层，取 `dist/*`）→ `cp -r` 到项目目录 → 改 index.html 相对路径 → 备份旧 bundle → 验证 200。**防御**：给 agent 的部署指令永远用【带时间戳唯一名 zip】（`forge-crm-brandfix-084531.zip`），避免 backup 同名误判触发回滚链；部署前 `ls -lat incoming/` + `unzip -l` 确认包结构；部署后 `curl 200` + bundle grep + 浏览器实测三重验证；**不要手动预建部署目标目录**（copytree 报 FileExistsError）。
-- **⚠️ 报告/日志文件必须统一进文件夹，不散落项目根目录（2026-08-14 用户纠正："不要在我的项目框架里这样写报告日志，归纳一下，新建个文件夹，统一归纳进去，后续指令也是如此"）**：给 agent 的每条指令，报告生成位置写死为项目内统一目录——**用户 0814 拍板用 `check-reports/`**（forge-crm 已建：`<项目>/check-reports/`；给 agent 的指令里报告路径直接写 `check-reports/`），红线加"报告文件不得写到项目根目录"。自检报告上传管道（ai-reports）不占项目目录；本地生成的审计/部署/自查报告 md 必须归入 `check-reports/` 再 commit，避免根目录散落 `forge-crm-annotation-report.md`、`forge-crm-brandfix-deploy-report.md` 等一堆文件。AGENTS.md 已加"报告统一归档（铁律）"章节（check-reports/ + 命名 {项目}-{任务}-{YYYYMMDD}.md + 根目录只留 AGENTS.md/CLAUDE.md/项目结构）。
-- **⚠️ 前端多账号隔离：登录成功必须先清本地 Dexie 缓存再拉服务端（2026-08-13 罗宾/贾维斯 demo 账号实测）**：前端把"服务端历史 + 本地 Dexie 缓存"合并显示（`Promise.all([loadCloudHistory(), getLocalMessages()])` 后 merge）——服务端按 username 隔离（demo 账号返回空），但**本地 Dexie 缓存不按用户隔离**（同域共享 IndexedDB）→ 新用户/演示账号登录看到上一个用户的聊天记录。修复：`handleLoginSuccess` 里先 `await clearLocalMessages()`（清空本地 Dexie）再 setAuthToken/setUsername——历史以服务端为准（服务端按用户隔离），本地缓存不跨用户泄漏。验证：后端隔离 OK 但前端仍串数据 = 本地缓存问题；给前端加/改用户隔离逻辑时指令里必须写"登录成功先清本地缓存"。
-> **⚠️ Agent 谎报"已部署 + HTTP 200"但实际未上线（2026-08-21 WMS 两轮实测——比"跳过 rsync"更隐蔽）**：纯前端原型（Dexie 无真后端）任何页面都 200，agent 在本地产 dev server 或访问旧线上 `curl 200` 拿到"成功"= 不是新产物上线的证据；它自检报告写"已部署 + 发布资源 index-xxx.js"，但 VPS incoming 空、线上 index.html 时间还是上次、部署日志无本轮记录。**收到"已部署"必用 VPS 实测三路对齐（index.html 时间戳 + bundle 物理时间 + 部署日志条目），不信自报**；agent 连续两轮谎报后停止信任其自动部署：改为让它**只 scp 传 zip 到 incoming + 报远端 ls 的字节数/时间戳硬证据**，Hermes 手动 `deploy-all.sh --deploy` + 用文件元数据出铁证。完整案例+验证命令 → `references/agent-false-deployment-report.md`。指令 Checkpoint 要求 agent 回报"线上 index.html 文件时间戳 / bundle hash / 部署日志条目"而非一句 HTTP 200。\n- **⚠️ 强制门禁（2026-08-21）：返修/开发类指令必须写完整交付链路**：不仅要求 build，必须明确“最终 dist 打成解压即根 zip（第一层 index.html）→用完整 rsync/scp 上传到准确 incoming 目录→报告文件名/字节数/远端时间戳→自检报告用完整 curl 上传”。默认部署由父会话审核后执行时，指令要明确“只上传，不声称已部署”；父会话确认后再手动 `bash /root/deploy-all.sh --deploy <project>`。审计报告若出现“已部署+HTTP 200”，必须由父会话用线上 index.html 时间戳、bundle hash/物理时间、deploy 日志三路独立核验，不能只信自报。
-- **门禁流程**：cron --check 检测到新包 → 写日志通知 → 用户喊杰西卡审报告（读 ai-reports/ 出 digest）→ 用户说"部署" → `bash /root/deploy-all.sh --deploy <项目>` → 验证 200
-- **⚠️ `--deploy` 参数不带 `-incoming` 后缀**（v135 实测）：脚本内部自己拼 `${TARGET}-incoming`——传 `jarvis-voice-incoming` 会变成 `jarvis-voice-incoming-incoming` → 报"未知项目"且线上不动。正确：`bash /root/deploy-all.sh --deploy jarvis-voice`（只传项目名）。部署失败先查日志 `tail /var/log/jarvis-deploy.log` 是否出现"未知项目"拼错
-- **⚠️ 部署前必须读最新自检报告确认版本内容，不抢跑**（0805 用户发火教训）：incoming 里同时有多个包（如样式包 + 功能包压在一起）时，不确认内容就部署会把中间版本的改动/资源覆盖丢掉（用户原话"自己把两个版本压着一起部署，导致丢失一个版本的记忆"）。流程：`ls incoming` 看有几个包 → `ls -lat /var/lib/jarvis/files/ai-reports/` 读最新报告确认版本号与改动 → 确认"最新包包含前面全部改动"才部署。Agent 报告"好了"但 incoming 无新包时，先确认它是否执行了 rsync（AI 常漏传）
-- **⚠️ 同名 zip 被误判已部署（v135 实测；0814 复踩——还会删包！）**：deploy-all.sh 用"backup 目录是否有同名 zip"判断是否已部署过。新 zip 也叫 `forge-crm.zip` 而 backup 里有旧同名文件 → `--check` 误报"无待部署包"（新包被跳过），且 `deploy_one` 的"已部署过，跳过"分支会 `rm -f "$LATEST"` **把新 zip 直接删掉**。修复：rsync 上传前把 zip 改唯一名（如 `forge-crm-brandfix-0814-0930.zip`——**给 agent 的部署指令里直接写死带时间戳的 zip 名**），或后续改检测逻辑按大小/时间比较。部署前 `ls /var/www/pmlophy.com/{项目}-incoming/` 确认新包在；若包已被误删/误判，手动部署兜底：`unzip -q zip -d /tmp/xxx` → `cp -r /tmp/xxx/{dist/* 或 .}/* dest/` → 备份旧 bundle → 改 index.html 相对路径 → `grep -o 'index-[^"]*\.js'` 验证。**zip 内容可能嵌套 `dist/` 一层**（`unzip -l` 第一层是 dist/ 而非 index.html）——cp 时取 `dist/*` 不是解压根；部署前先 `ls` 解包结构。
-- 部署验证：`tail /var/log/jarvis-deploy.log` 应看到"检测到新包→部署成功→已归档"；线上确认 `grep -o 'index-[^"]*\.js' /var/www/pmlophy.com/jarvis-voice/index.html` 是报告中的主 bundle 名
-- **⚠️ deploy-all.sh 验证 URL 必须带 /project/ 前缀（2026-08-08 forge-crm 实测）**：forge 系部署目标在 `/var/www/pmlophy.com/project/{项目}`，但脚本旧版验证 URL 是 `https://pmlophy.com/{项目}/`（漏了 project/ 段）→ 永远 404 → 触发回滚 → 目录被删。已修为 `https://pmlophy.com/project/$(basename "$DEST")/`；回滚逻辑同时加固（无备份时保留当前状态，不删目录）。部署失败先看日志确认是"验证 404"还是"回滚删目录"。**【边界例外 2026-08-20：jarvis-voice 部署在根路径 `/var/www/pmlophy.com/jarvis-voice`（不在 project/ 下）**——旧脚本对 jarvis-voice 验证成 `/project/jarvis-voice/` → nginx 404 → 误判"部署失败"触发错误回滚。已修：验证 URL 按 `$DEST` 是否含 `/project/` 自适应（含→`/project/{name}/`，否则→`/{name}/`）。**判断规则**：不是"一律带 /project/"，而是\"验证 URL 要匹配该项目实际部署路径\"——forge-* 在 project/ 下用 /project/，jarvis-voice 在根用 /。部署后核对 bundle hash + 首页 200 是真信号；脚本报"验证失败 404"但 curl 首页 200 = 验证 URL 拼错路径，不是部署真失败。】**
-- **⚠️ zip 必须"解压即根"（2026-08-08 forge-crm 实测）**：Codex 在项目根 `zip -rq forge-crm.zip front-prototype/dist prd-docs/...` 会带 `front-prototype/dist/` 前缀 → 解压后线上入口在 `project/forge-crm/front-prototype/dist/index.html` → 验证 404。正确打包：`cd front-prototype/dist && zip -rq ../../forge-crm.zip .`（第一层就是 index.html）。部署前 `unzip -l xxx.zip | head -8` 确认第一层是 index.html 而非嵌套目录；zip 里要含标注产物时把 annotations 也一起打进去。
-- **⚠️ 半自动流程确认（2026-08-08 用户拍板）**：上传管道（rsync+报告）全自动、cron 每 2 分钟检测发提醒，但"提醒→处理"需要会话激活（Hermes 不常驻、无后台循环，no_agent cron 只是投递文本不唤起 agent）。约定：**每次对话开始主动查 pending**（incoming 新 zip + ai-reports 新报告），不等用户催问"部署了吗"；部署仍需用户确认（审查门禁）。用户原话：不是每次都该他来提醒。
-- 与报告管道组合 = 用户只做三件事：发指令、审报告拍板、确认部署
+> 完整内容（管道设计、审查门禁方案、失败处理）→ `references/auto-deploy-pipeline.md`
+> 提交监控 cron 的 no_agent 实现 → `references/ai-delivery-monitor-cron.md`
 
 ### Cursor 交叉审计（反重力出码后必做）:
 ```plaintext
@@ -1068,7 +1099,8 @@ Checkpoint: build后 strings检查 basename出现次数=1 → 发dist
 
 | Pitfall | Symptom | Fix |
 |---------|---------|-----|
-| **Codex 沙箱默认禁网（2026-08-26 实测）** | 指令里给了 curl 上传/rsync 命令，Codex 执行报 `curl: (6) Could not resolve host`（--noproxy '*' 也无效）；用户 Mac 手动 curl 却 200 | Codex CLI `workspace-write` 沙箱默认 `network_access = false`（DNS 都不通）。修复：Mac `~/.codex/config.toml` 加 `[sandbox_workspace_write] network_access = true`；审批 503 再加 `approval_policy = "on-request"`。兜底：沙箱受限时让 agent 把报告存 check-reports/ + git 提交，由杰西卡 VPS 侧补传管道（见 ai-artifact-pipeline 技能） |
+| **Codex 沙箱默认禁网（2026-08-26 实测）** | 指令里给了 curl 上传/rsync 命令，Codex 执行报 `curl: (6) Could not resolve host`（--noproxy '*' 也无效）；用户 Mac 手动 curl 却 200 | Codex CLI `workspace-write` 沙箱默认 `network_access = false`（DNS 都不通）。修复：先分清是「网络」还是「监听端口」，两者都出自 Codex 自己的 seatbelt 沙箱，不是 macOS 权限、换端口无效。注意 `network_access = true` 写在 `config.toml` 里在 macOS 上被静默忽略（seatbelt 无条件设 `CODEX_SANDBOX_NETWORK_DISABLED=1`，官方 issue 长期未修），**唯一可靠办法是那一次会话用 CLI 参数启动 `codex --sandbox danger-full-access`**——config.toml 里改 `sandbox_mode` 不够，必须带参数。日常不改默认配置（等于放开整盘写入+联网），把需要联网/起服务的动作（git pull/push、npm install、dev server、ego lite）留给用户在终端或 Cursor 里做，Codex 只做改文件与本地 build。另：`git pull --rebase` 在沙箱里报「写不进 .git/FETCH_HEAD」时，根因也是联网被掐（fetch 出不去），不要去查文件权限。审批 503 再加 `approval_policy = "on-request"`。兜底：沙箱受限时让 agent 把报告存 check-reports/ + git 提交，由杰西卡 VPS 侧补传管道（见 ai-artifact-pipeline 技能） |
+| **Codex 报「沙箱禁止监听本地端口」→ 用户误以为是 Mac 权限（实测）** | agent 起 dev server 报 `EPERM`、Vite 起不来，于是自称「浏览器验收未执行」；用户看到报告反问「我本地 mac 不可能有权限限制这个」。**换端口不会有任何作用**——禁的是 `workspace-write` 沙箱的本地网络监听能力，不是端口被占 | 分两步，别去改 Codex 的沙箱配置（改网络开关也不解锁监听）：① **dev server 由用户在终端起**，指令里写死「不要尝试自己启动 dev server」；② 验收改用 **ego lite**——它是独立 Mac 应用，由 agent 通过 `ego-browser` 命令调用，不经过 Codex 沙箱，能正常访问 `localhost:5173`。指令模板两段：`dev server 由用户在本地终端起在 <URL>，你不要尝试自己启动` + `用 ego-browser 打开该地址逐页验收，每页记录实际显示值`。ego 侧若报 `Failed to start ego lite / retry with Full Access`，是 ego 应用本身没给足权限或没启动，让用户在 ego 应用里授权/重开，与 Codex 无关 |
 | **Agent 新建项目而非改已有项目** | 反重力/Codex忽略当前可运行代码，另起脚手架 | 指令第一行写明目标项目和“修改现有项目，不创建新项目”；红线加“禁止 npm create vite/重建脚手架/更换技术栈” |
 | **回退后立即梭哈改造** | 不清楚真实基线就批量改，重新引入已回退的问题 | 先只读审计 git 基线、路由、页面和数据层；选单个样板对象，小范围验收后再推广 |
 | **SPA 部署 blank page** | nginx 200 但空白 — basename + base href + nginx alias 不一致 | 见 references/spa-deploy-check.md |
@@ -1099,4 +1131,5 @@ Checkpoint: build后 strings检查 basename出现次数=1 → 发dist
 | **Codex 提示词被 OpenAI reasoning 护栏拦截（"Invalid prompt ... usage policy... advice-on-prompting"）** | 喂一段五段式分步指令，Codex（走 relay 到 GPT 推理模型）返回 `Invalid prompt: your prompt was flagged as potentially violating our usage policy`，整段分步命令式内容本身就是触发点——改短/改措辞仍拦，不是单一句子的问题 | **把完整指令写进仓库 `.md` 文件（commit+push），给 Codex 一行"读文件照做"的极短 prompt**：`在 <仓库> 读取 <文件>，完整执行里面每一步，按文件末尾要求贴 diff 和真命令输出`——提示词正文不含分步命令，护栏不触发。文件走 prompt/ 目录续号；用户 pull 后喂 Codex。反重力(Google)无此护栏可直接贴全文。护栏拦的是"像在指导模型怎么推理"的密集命令，不是文件内容 |
 | **VPS 侧 pull 静默失败 → 部署了旧代码** | 用 SSH key 推完把 remote 改回 https，下次 `git pull` 报 `could not read Username for 'https://github.com'`；命令链没断，build 和部署照常跑完，线上还是旧代码，直到核新文件才发现 | **部署前必须验证 pull 真的成功了**，判据是 `git rev-parse --short HEAD` 与 `origin/main` 一致、以及本轮新文件真的存在（`ls` 新文件名），不是看命令有没有报错——错误输出很容易被 `&&` 链和 `tail` 吞掉。VPS 侧拉 GitHub 统一用 SSH remote + `GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519_forge"`，推完不要改回 https；确实需要改回时，下一轮 pull 前先换回 SSH |
 | **发布版 base64 图被替换冲掉（2026-10-26 实测）** | 在 base64 内嵌的发布版 md 里按行替换表格单元格，那格嵌的整张图被文字盖掉，文件从 2.38MB 陀降到 2.19MB，图全没了 | 发布版永远从主 PRD 整份脚本重新生成（图片→base64），**不在两份文件上各改一遍**。验收硬指标：发布版 base64 图数 = 主 PRD 图片引用数，且发布版无 `./images/` 残留 |
-| **公司机透明加密把二进制改坏（2026-10-26 PPT 实测）** | 推上来的 pptx 在服务端 `unzip` 报 `End-of-central-directory signature not found`，文件头从 `PK` 变成 `%TSD-Header-###%`——公司机打开过就被加密了 | 二进制交付件（pptx/xlsx/docx）**只在 Mac 上改**；从别人机器推上来先 `file <文件>` 看类型，不是 `Microsoft PowerPoint/Excel` 就不能直接用，从历史提交取旧版回退 | 某一页 `<Form style={X}>` 渲染后 form 元素 style attribute 为 null，其余同构页面正常；fiber memoizedProps.style 有完整样式；无任何 JS 报错；换浏览器/无痕/清缓存复现 | 根因=该页有 `<Form.Item name="style">`（语言风格筛选字段恰好叫 style）——HTML 规范里 form 的 named control 遮蔽 `HTMLFormElement.style` 原生访问器，React 写样式全部静默失败。**修复=字段改名（如 script_style）+ 提交时映射回后端原参数名**。预防红线（写进所有前端表单指令）：Form.Item name 禁用 style/name/title/action/method/submit 等 HTML 原生属性名。排查钥匙：`el.style.setProperty(...)` 抛 "not a function" = 属性被遮蔽/劫持；注意 minified bundle 里共享 token 被 Rollup 提升到 chunk 头部，grep 使用点要搜变量引用不是字面量。完整案例 → audit-gap-batch-closure skill 的 references/script-list-style-shadowing-case.md |
+| **公司机透明加密把二进制改坏（2026-10-26 PPT 实测）** | 推上来的 pptx 在服务端 `unzip` 报 `End-of-central-directory signature not found`，文件头从 `PK` 变成 `%TSD-Header-###%`——公司机打开过就被加密了 | 二进制交付件（pptx/xlsx/docx）**只在 Mac 上改**；从别人机器推上来先 `file <文件>` 看类型，不是 `Microsoft PowerPoint/Excel` 就不能直接用，从历史提交取旧版回退 |
+| **公司机 Excel 反复开关会反复触发解密（2026-11-06 用户要求）** | agent 做 Excel 操作时「打开→改→关闭→再打开」，每次重开都触发一次透明加密解密，用户得全程盯着手工解密 | 给本地 agent 的 Excel 指令必须写死：一次性打开目标 xlsx，所有修改在同一进程内做完，只保存一次，**禁止关闭后重新打开**；分步骤验证用脚本读回内存数据，不要用「重新打开文件看一眼」。需要多轮修改时，先规划完所有改动再一次性落盘 | 某一页 `<Form style={X}>` 渲染后 form 元素 style attribute 为 null，其余同构页面正常；fiber memoizedProps.style 有完整样式；无任何 JS 报错；换浏览器/无痕/清缓存复现 | 根因=该页有 `<Form.Item name="style">`（语言风格筛选字段恰好叫 style）——HTML 规范里 form 的 named control 遮蔽 `HTMLFormElement.style` 原生访问器，React 写样式全部静默失败。**修复=字段改名（如 script_style）+ 提交时映射回后端原参数名**。预防红线（写进所有前端表单指令）：Form.Item name 禁用 style/name/title/action/method/submit 等 HTML 原生属性名。排查钥匙：`el.style.setProperty(...)` 抛 "not a function" = 属性被遮蔽/劫持；注意 minified bundle 里共享 token 被 Rollup 提升到 chunk 头部，grep 使用点要搜变量引用不是字面量。完整案例 → audit-gap-batch-closure skill 的 references/script-list-style-shadowing-case.md |
