@@ -5,7 +5,7 @@
 #   bash sync-skills-mac.sh                    # 链到默认中枢 ~/.agents/skills
 #   bash sync-skills-mac.sh --discover         # 只探查：列出本机所有可能的 agent skill 目录（不改动）
 #   bash sync-skills-mac.sh --auto --dry-run   # 对探查到的全部目录做演练
-#   bash sync-skills-mac.sh --auto             # 对探查到的全部目录真跑
+#   bash sync-skills-mac.sh --auto             # 对探查到的全部 agent 目录真跑（不碰 ~/.hermes）
 #   bash sync-skills-mac.sh ~/.agents/skills ~/.qoder/skills   # 只链到指定目录
 #
 # 只做两件事：① 为仓库里每个 skill 建软链（已存在且指向正确的跳过） ② 清掉指向仓库内已不存在 skill 的断链。
@@ -61,7 +61,7 @@ discover() {
           esac
           # 排除应用内置资源、项目内自带、应用私有缓存目录
           case "$rel" in
-            */builtin/*|*/builtin|*/design_libraries/*|*/connectors/*|*/security-resources/*|*/memories/*|*/tests/*|*/.hermes/*|*/项目*|*/个人文件/*|*/Documents/*|*/Desktop/*|*/Downloads/*) continue ;;
+            .hermes/*|.hermes|*/builtin/*|*/builtin|*/design_libraries/*|*/connectors/*|*/security-resources/*|*/memories/*|*/tests/*|*/.hermes/*|*/项目*|*/个人文件/*|*/Documents/*|*/Desktop/*|*/Downloads/*|*/Library/*) continue ;;
           esac
           echo "$p"
         done
