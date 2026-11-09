@@ -8,48 +8,56 @@
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
-HUB="${1:-$HOME/.agents/skills}"
 DRY=0
-for a in "$@"; do [ "$a" = "--dry-run" ] && DRY=1; done
-[ "${HUB:0:1}" = "-" ] && HUB="$HOME/.agents/skills"
+HUBS=()
+for a in "$@"; do
+  if [ "$a" = "--dry-run" ]; then DRY=1; else HUBS+=("$a"); fi
+done
+[ ${#HUBS[@]} -eq 0 ] && HUBS=("$HOME/.agents/skills")
 
 echo "仓库: $REPO_ROOT"
-echo "中枢: $HUB"
+echo "目标中枢: ${HUBS[*]}"
 [ "$DRY" = "1" ] && echo "模式: 演练（不改动）"
-mkdir -p "$HUB"
 
-created=0; refreshed=0; skipped=0; removed=0
+for HUB in "${HUBS[@]}"; do
+  echo "== 处理 $HUB ==
+"
+  mkdir -p "$HUB"
+  created=0; refreshed=0; skipped=0; removed=0
 
-# 1) 建链 / 刷新链
-while IFS= read -r skill_md; do
-  src="$(dirname "$skill_md")"
-  name="$(basename "$src")"
-  dst="$HUB/$name"
-  if [ -L "$dst" ]; then
-    cur="$(readlink "$dst")"
-    if [ "$cur" = "$src" ]; then
-      refreshed=$((refreshed+1)); continue
+  # 1) 建链 / 刷新链
+  while IFS= read -r skill_md; do
+    src="$(dirname "$skill_md")"
+    name="$(basename "$src")"
+    dst="$HUB/$name"
+    if [ -L "$dst" ]; then
+      cur="$(readlink "$dst")"
+      if [ "$cur" = "$src" ]; then
+        refreshed=$((refreshed+1)); continue
+      fi
+      [ "$DRY" = "0" ] && rm -f "$dst"
+      [ "$DRY" = "0" ] && ln -s "$src" "$dst"
+      refreshed=$((refreshed+1))
+    elif [ -e "$dst" ]; then
+      echo "跳过（同名真实目录，不覆盖）: $name"
+      skipped=$((skipped+1))
+    else
+      [ "$DRY" = "0" ] && ln -s "$src" "$dst"
+      created=$((created+1))
     fi
-    [ "$DRY" = "0" ] && rm -f "$dst"
-    [ "$DRY" = "0" ] && ln -s "$src" "$dst"
-    refreshed=$((refreshed+1))
-  elif [ -e "$dst" ]; then
-    echo "跳过（同名真实目录，不覆盖）: $name"
-    skipped=$((skipped+1))
-  else
-    [ "$DRY" = "0" ] && ln -s "$src" "$dst"
-    created=$((created+1))
-  fi
-done < <(find "$REPO_ROOT/skills" -maxdepth 3 -name SKILL.md -type f)
+  done < <(find "$REPO_ROOT/skills" -maxdepth 3 -name SKILL.md -type f)
 
-# 2) 清理指向仓库内已不存在 skill 的断链
-while IFS= read -r link; do
-  [ -L "$link" ] || continue
-  target="$(readlink "$link")"
-  case "$target" in
-    "$REPO_ROOT"/*) [ -e "$link" ] || { [ "$DRY" = "0" ] && rm -f "$link"; removed=$((removed+1)); } ;;
-  esac
-done < <(find "$HUB" -maxdepth 1 -type l)
+  # 2) 清理指向仓库内已不存在 skill 的断链
+  while IFS= read -r link; do
+    [ -L "$link" ] || continue
+    target="$(readlink "$link")"
+    case "$target" in
+      "$REPO_ROOT"/*) [ -e "$link" ] || { [ "$DRY" = "0" ] && rm -f "$link"; removed=$((removed+1)); } ;;
+    esac
+  done < <(find "$HUB" -maxdepth 1 -type l)
+
+
+done
 
 echo "----"
 echo "新建链接: $created"
