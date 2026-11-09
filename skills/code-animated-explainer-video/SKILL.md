@@ -232,49 +232,6 @@ AI 做这类视频最典型的失败：把逻辑图伪装成产品界面——�
 
 三项都过再发。用户报“画面和文字不符”时，先按上面第 2 条解码错误数定位，再谈内容。
 
-### 响度归一化必须写进混音脚本，不是出厂前临时补
-
-补一次不算修好：手工对成片做 loudnorm 之后，只要流水线重跑一遍（改文案、重渲帧），音频就退回原样——用户会说“声音又是 bug，太低了”，而根因跟上一轮一模一样。
-
-判据：`grep -nE 'loudnorm|volume=' <混音脚本>`。混音链里只有 `amix=...` 和 `volume=1.0` 就是缺这一级。TTS 分轨本身很轻（实测 voice 轨 mean ≈ -38dB），原样合轨必然整片偏轻。
-
-修在源头：把归一化挂在该脚本最后一次合轨的 `filter_complex` 末尾，之后所有重渲自动带。
-
-```bash
-# 合轨时直接带上
-amix=inputs=2:...,apad=whole_dur=<DUR>,atrim=0:<DUR>,loudnorm=I=-16:TP=-1.5:LRA=11[mixout]
-```
-
-### 已出片只修音频：重封装，不要重渲视频
-
-画面没问题、只是声音小的时候，**绝不要重跑几千帧**（半小时到几小时）。视频流原样 copy、只换音轨：
-
-```bash
-# 1) 先测混音成品，拿 measured_* （可选，只影响精度）
-ffmpeg -i audio_final.wav -af loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json -f null - 2>&1 | tail -14
-# 2) 归一化音轨
-ffmpeg -i audio_final.wav -af "loudnorm=I=-16:TP=-1.5:LRA=11:measured_I=..:measured_TP=..:measured_LRA=..:measured_thresh=..:offset=..:linear=false" -ar 44100 -ac 2 audio_fix.wav
-# 3) 视频流 copy + 换音轨（秒级）
-ffmpeg -y -i old.mp4 -i audio_fix.wav -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 192k -movflags +faststart -shortest fixed.mp4
-```
-
-重封装后仍要跑三项硬校验（解码 0 错误、`I` 在 -17~-15 LUFS、True peak ≤ -1.5 dBFS），因为 `-c:a aac` 是二次编码。
-
-### 声音小的定位顺序（别一上来就调增益）
-
-1. 全片 `volumedetect` + `ebur128` 看 **mean 与 integrated（I）**：I ≈ -36 LUFS 就是整片轻，不是某段。
-2. 分轨量 voice / sfx / audio_final 各跑一次 volumedetect。**voice 轨自己就 -38dB 说明问题在混音缺归一化**，不在编码、也不在 TTS 音色选错。
-3. 分段抽样（每 30 秒取 8 秒）确认全片轻还是局部轻；全片 -35~-60dB = 缺增益级，不是某处衰减点错。
-4. 再看流：`ffprobe -show_entries stream=codec_type` 有没有 audio 流、几条。
-
-## 交付的两条通道：入库优先，传机次选
-
-**成片一律先入 `video-source` 仓库**（`<主题>/<版本>/`，如 `event-tag/300s-robin/`），文件名带日期与定稿标识（`eventtag-300s-voice-final-1109.mp4`）。用户在任意机器上 `git pull` 就能拿到，不受 Tailscale 中继速度和他开不开机影响。传 Mac 只是「他今天就要看」时的快捷通道，不是唯一交付方式。
-
-- 仓库约定**单个 mp4 ≤ 20MB**（超了就上 LFS，不值得为几 MB 折腾）。超一点点时最省事的减法不是降画质，是**音频重封装到 128k**：`ffmpeg -y -i in.mp4 -map 0:v:0 -map 1:a… -c:v copy -c:a aac -b:a 128k out.mp4` ——视频流 copy 不动，21MB 掉到 19MB，响度不受影响（重封装后仍要跑一遍三项硬校验）。
-- **README 的片目表要写清哪条是定稿、成品文件路径、md5、时长、响度**。一个目录里堆着四五个历史版本时，唯一能分辨「哪个是最终版」的就是这张表和 md5，只写「成品」两个字下一个人一定拿错。
-- 历史版本会持续长大（每条 300s 片子四个版本 ≈ 70MB），片子多了以后只保留定稿入库，历史版留在本地当底档。
-
 ## 把成片送到用户机（Tailscale + scp，别让他自己敲命令）
 
 ```bash
@@ -286,15 +243,6 @@ ssh -i ~/.ssh/id_ed25519_forge liulongfei@<mac-tailscale-ip> 'md5 -r ~/video-rob
 - 用户的 Mac 收件目录固定 `~/video-robin`，不要另建目录也不要问放哪。
 - **必须 `-i <key> -o IdentitiesOnly=yes`**：私钥文件名不是默认的 `id_ed25519` 时不显式指定，ssh 根本不会把它递上去，现象是 `Permission denied (publickey)` ——此时先查本机 `~/.ssh/*.pub` 与远端 `~/.ssh/authorized_keys`，不要急着重装 sshd 或换用户。
 - 传完两端各跑一次 md5 逐条比对再报完成；只报“已传输”不算交付。
-- **大文件用 `rsync --partial` 而不是 `scp`**：scp 断线从头再来，而这条链路本身很慢（实测 18MB 走 Tailscale 中继约 5 分钟，约 58KB/s）。续传写法：
-
-```bash
-rsync -av --partial --progress -e "ssh -i ~/.ssh/id_ed25519_forge -o BatchMode=yes" \
-  fixed.mp4 liulongfei@<mac-tailscale-ip>:~/video-robin/
-```
-
-- **对方合盖/休眠会让 SSH 直接超时，表现像“网络问题”其实不是**：先 `tailscale status` 看对端是不是 `offline, last seen ...`、是不是在 `relay "xxx"` 中继；对端 offline 就停手等对方开机，不要反复重试也不要怀疑密钥。判据：`tailscale ping` 同样 timed out 而本机其他服务正常。
-- **重传时先保持 `-fixed` 文件名**，两端 md5 对齐后再在远端覆盖成正式文件名，避免传到一半把旧版冲掉。
 - Mac 侧只开 Tailscale 不等于能连：macOS 的「远程登录」默认关闭，需要用户在 系统设置→通用→共享 里打开；公钥没加入 `~/.ssh/authorized_keys` 同样连不上。走不通时的备用通道：把文件放到静态站目录，给一条可直接粘贴的 `curl -O` 循环命令（文件仍要核 Content-Length 或 md5）。
 
 
@@ -340,28 +288,31 @@ rsync -av --partial --progress -e "ssh -i ~/.ssh/id_ed25519_forge -o BatchMode=y
 - 模板：`templates/motion_page.html`（通用骨架）、`templates/motion-page-dark.html`（深色时间轴版）、`templates/shot.py`、`scripts/shoot_frames.py`（`python scripts/shoot_frames.py index.html ./frames 30 13`，自动找缓存 chromium 并打印合成命令）
 - 形态判断对照：`references/explainer-vs-product-demo.md`（概念讲解 vs 产品界面演示，混做两头不像）
 
-## 时间轴必须按旁白真实时长排（本类活返工最多的根因）
+## 交付前必验三项（不验就会交出去一个坏片）
 
-先定总时长再往里塞文案，必然留下一堆死空白：实测一条 240 秒片子，20 段旁白加起只讲了 108 秒，**132 秒是空的**，每段之间静 5–11 秒。用户的描述会是「开场说完后一直停了好几秒才有动画和声音」——不要辩解是「留白消化时间」，5 秒以上就已是缺陷。
+做完不要先看画面好不好看，先跑这三条硬指标，任一条不过就别发：
 
-正确做法：
+```bash
+# 1 解码完整性：必须为 0。非 0 说明编码/写出已损坏，表现是拖进度条画面乱跳、开头就播到中间某一步
+ffmpeg -v error -i out.mp4 -map 0:v -f null - 2>&1 | wc -l
+# 2 音轨存在且听得见：mean 应在 -20~-16 dB，max ≥ -3 dB。曾出现 mean -43.5dB（几乎无声）和干脉没音轨两种事故
+ffmpeg -hide_banner -nostats -i out.mp4 -vn -af volumedetect -f null /dev/null 2>&1 | grep -E 'mean_volume|max_volume'
+# 3 首帧对内容：抽 2s/30s 两帧用 vision 读时间码+当前步骤，确认进度与内容同步（损坏片的典型症状就是时间码与画面错位）
+```
 
-1. **逐段量真实语音时长**：`ffprobe -show_entries format=duration -of csv=p=0 audio/vNN.mp3`，槽位 = 语音时长 + **1.5 秒气口**，全片总时长 = 所有槽位之和（不是先拍 240 再往下分）。
-2. **改文案就改时长，改时长就重排整条时间线**：TTS 重新合成那一段 → 该段变长/变短 → 后面所有 MSG/SUBS/PHASES 的秒数全要重算 → 必须重渲。所以**文案要在开工渲染前定稿**；否则每改一句话就是一轮全量重渲。
-3. **重排要脚本化、一次改全**：建一份分段线性映射（旧窗口 `[s_i,e_i]` → 新窗口），用它统一重写 index.html 里的 MSG.t（dur 同时夹到本槽位上限）、SUBS、PHASES，以及 shot.py 的 `DUR`、build_voice.py 的 `DUR` 和每条时间、mix.py 的 `-t`。手改十几个数字必错且漏。重排前先 `cp` 备份这几个源文件，改坏了能回滚。
-4. **交付前量空白**：`ffmpeg -i f.mp4 -vn -af "silencedetect=noise=-45dB:d=2" -f null -` 看 `silence_duration`，最长应 ≤ 约 2 秒（气口量级）；出现 4 秒以上就说明时间轴还是按老时长铺的。
+- 响度不达标用一键标准化：`-af "loudnorm=I=-16:TP=-1.5:LRA=11"`（视频流 copy，只重编音频）。旁白+音效混音时旁白 1.0、音效 0.35，音效源本身的电平往往偏低，要整轨拉。
+- 损坏片不能靠“重跑合成”修：帧序列已经丢了就只能重渲。渲之前先 `rm` 旧成片，否则源文件存在时脚本的断点续渲会跳过。
+- 重渲前先确认磁盘和各 python 环境可用（见下）。
 
-重排脚本已封装：`scripts/retime_timeline.py`（填 BASE / OLD_WINDOWS / PHASE_BOUNDS 后跑一次，自动重写 index.html 的 MSG·SUBS·PHASES 与 build_voice.py / shot.py / mix.py 的时长）。跑之前先 `cp` 备份这四个文件。
+## 环境坑：升级后 PYTHONPATH 会让 Playwright 全线报 greenlet
 
-**总时长与时间码不许在画面里写死。** 页面上 `const DUR = 240` 与 `progTag.textContent = t+'s / 240.0s'` 这种硬编码，重排到 143 秒后右上角还在显示「/ 240.0s」，用户会以为没剪。一律改成从 `DUR` 常量算，改一处全片跟随。
+Hermes 升级后环境里残留 `PYTHONPATH=<新解释器>/site-packages`，此时任何 python 都会加载到不匹配的 C 扩展，报 `ModuleNotFoundError: No module named 'greenlet._greenlet'`，换哪个解释器都没用（我试了系统 python3、两个 venv，全部失败）。解法是在命令前清掉它：
 
-**屏幕文案进场前逐条 grep 源文件核对完整性**。画面里出现半句话（如结尾少四个字）多数不是 CSS 裁切，而是写源文件时就写漏了——`grep -n '<半句>' index.html` 对上原文一眼就能确认，不要先去调字号/宽度。
+```bash
+env -u PYTHONPATH /usr/local/lib/hermes-agent/venv/bin/python shot.py
+```
 
-**业务上下文要写进文案本身。** 只说「配受众」不够，要写清这一步发生在哪：「在触达计划里做受众筛选：块间 且/或/非 → 组间 …」。改一条屏幕文案时，解说带和 TTS 旁白同步改（旁白重新合成那一句），三处口径不许分叉。
-
-## 交付时清掉被取代的旧文件
-
-把新成片传到用户机后，**在同一条命令里删掉上一版**（`ssh … 'rm -f ~/video-robin/<旧文件名>'`）。他的收件目录里躺着 240s 旧版和 143s 新版时，他打开的是哪个全凭运气，而这属于「过程中的糊涂」不该丢给他。传完 `ls` 一次目录给他看，列表里只该有当前有效的成片。
+判断是哪边坏了：`python -c "import playwright, greenlet; print(greenlet.__version__)"`——能导入说明环境没问题，报 `_greenlet` 就是 PYTHONPATH 污染。
 
 ## 派给别的 agent 时
 

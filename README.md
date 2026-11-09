@@ -2,6 +2,9 @@
 
 路飞个人 AI 工作流 Skill 集合。
 
+> **本库边界（2026-11-09 用户明确）**：只放**本地 agent 用得到的** skill（Cursor / Codex / 反重力 / TRAE / WorkBuddy / Qoder / Claude Code）。杰西卡（VPS Hermes）自己的 skill 不进库，需要时留在 VPS。
+> 当前库内 29 个；VPS 上的其余 skill 不对外同步。
+
 ## 当前 Skill
 
 ### `agent-skills-library`

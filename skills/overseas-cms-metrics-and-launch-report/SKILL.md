@@ -753,47 +753,7 @@ for i, s in enumerate(Presentation(f).slides, 1):
 
 **同一份数据出两个形态**：Excel 矩阵版给人看（保留颜色、合并、上线情况行）；TSV 长表版给程序/分析用（一行一个「区间 × 渠道 × 国家」，空值为空串、比率为小数）。矩阵直接转 TSV 会把合并与样式全丢掉、还变成大堆空格，不要那么干。
 
-**目标平台是公司在线表格（docs.vivo.xyz 这类）时，交付形态另有三条硬约束**（踩过）：
-
-1. **一个工作簿只能一个 sheet**——多页数据要作为单个 sheet 放进去时，多余的「说明页 / 索引页 / 明细版」本身就是错。需要另一种切法就出**另一个文件**，不堆 sheet。
-2. **在线表格导入 xlsx 是支持嵌入图片的**（实测通过，PNG 能保留），所以不要因为“在线表格不支持图”就改做外链或手插。但**合并单元格里的图尚未验证**——改发布形态前先导一个 3 页小样本验一遍（重点看图是否落在合并块里、以及 1 行的小块被拉高后是否难看）。
-3. **导进去之后合并单元格会让筛选失效**，交付前先确认使用者主要靠筛选还是靠翻页，选一种并告知。
-
 **趋势图：不能把四个渠道画进一张图。** 实测富媒体累计 7.41 亿、邮件 2314 万、WhatsApp 23 万、短信 4 人，量级差六个数量级，同图会把小渠道压成底边一条直线。正确做法：**每渠道单独一张「柱（发送人数）+ 折线（成功率/阅读率，副轴）」组合图**；另加一张只有百分比量纲的三渠道成功率对比折线；**短信量级太小直接不出图**，在说明里写清原因。副轴在 openpyxl 里要显式设 `axPos="r"`，默认是左侧会盖住主轴。
-
-**openpyxl 出趋势图的四个必改项（不改就是交一张看不懂的图，用户会直接退回）。** 生成完后一定要解包验一次 XML，不能只看脚本没报错；图表这东西显示不对时脚本一声不响：
-
-1. **分类轴必须是 `strRef`，不能是 `numRef`**。`chart.set_categories(Reference(...))` 默认写成 `<cat><numRef>`，而月份/区间这类列是文本（`2026-01`、`2026/01/08 ~ 2026-05-31`），Excel 拿到数字引用后横轴渲染成空白或 1,2,3。修法：建完图后把每个系列的 `cat` 换成字符串引用。
-   ```python
-   from openpyxl.chart.data_source import AxDataSource, StrRef
-   ref = f"'数据sheet'!$A${r1}:$A${r2}"
-   for s in chart.series:
-       s.cat = AxDataSource(strRef=StrRef(f=ref))
-   ```
-2. **必须有数据标签，否则只有柱子高低、没有具体数值**。给柱图加 `DataLabelList`（`showVal=True`、`numFmt="#,##0"`、`position="outEnd"`）；对比折线也加（`numFmt="0.0%"`）。
-3. **分类轴的 `axPos` 必须显式写 `b`，不写就会跟数值轴挤在左侧、标签被吃掳**。openpyxl 默认给 catAx 的 `axPos="l"`，与左侧数值轴同侧，Excel 渲染时分类轴标签直接不显示——这一条比 strRef 更隐蔽，因为解包看 strRef 和缓存都在、结构也合法，就是显示不出来。四个轴位置定死：分类轴 `b`、左数值轴 `l`、右副轴 `r`。同时把 `delete=False`、`tickLblPos="nextTo"`、`majorTickMark="out"` 一起显式写上。
-   ```python
-   ax = chart.x_axis
-   ax.axPos, ax.delete, ax.tickLblPos = "b", False, "nextTo"
-   chart.y_axis.axPos, chart.y_axis.delete = "l", False
-   line.y_axis.axPos, line.y_axis.axId = "r", 200   # 副轴
-   ```
-4. **跨表引用要连值一起内嵌（strCache / numCache）**。图表引 `'单月数据'!$A$51:$A$60` 这类跨 sheet 区域时，Excel 打开不会主动重算，缓存缺失就显示空白。把值直接写进图表的 `strCache` / `numCache`，显示就不再依赖 Excel 重算。
-   ```python
-   from openpyxl.chart.data_source import StrData, StrVal, NumData, NumVal, NumRef, NumDataSource
-   s.cat = AxDataSource(strRef=StrRef(f=ref, strCache=StrData(
-       ptCount=len(vals), pt=[StrVal(idx=i, v=str(v)) for i, v in enumerate(vals)])))
-   s.val = NumDataSource(numRef=NumRef(f=valref, numCache=NumData(
-       formatCode="#,##0", ptCount=len(v), pt=[NumVal(idx=i, v=val) for i, val in enumerate(v)])))
-   ```
-
-**解包验 XML 时，标签带不带 `c:` 前缀两种写法都要认。** openpyxl 直出的图 XML 里标签常无命名空间前缀（`<dLbls>`、`<axPos val="b"/>`），而用户在 Excel 里打开重存后会被改写成带前缀的（`<c:dLbls>`、`<c:axPos val="b"/>`）。校验脚本只认一种写法，会把明明正常的图判成「数据标签缺失 / 轴位置错」，反过来把修好的版本误判成没修。判法：解包后对关键特征各试两种模式（`"<dLbls>" in x or "<c:dLbls>" in x`）。
-
-**用户自己打开重存过的版本，优先于 openpyxl 直出版本当交付件。** 他重存后 XML 会规范化（补命名空间、重算缓存），渲染兼容性反而更好；文件会大一些（实测 57KB → 71KB），这是正常的，不要当异常去"修"。他的修改可能同时把图表标题改简短了，提交上去后别用自己的直出版本覆盖。
-
-**数值标签只标在柱子上，不要柱和折线全标。** 一张柱 + 双折线的图有 3 个系列 × 10 个月 = 30 个标签，互相遮挡反而看不清。柱标具体人数、两条折线的比率读右侧纵轴就够了；只有纯折线对比图才逐点标百分比。同时给横轴和两个纵轴都写 `title`（如「月份」「当月发送人数」「比率」），不放标题的图读者猜不出单位。
-
-**累计与单月并存时出两个 sheet，不要合成一个。** 用户会明确要求「一个是单月趋势图，一个是单月数据」——趋势图页只放图、数据页放矩阵，图通过引用数据页底部的「图表数据源」区取数（该区标题标红「勿删」，删了图就全空）。**这说明务必写给使用者**，否则对方清理表格时顺手删掉，四张图一起变白板。
 
 **累计相减求单月：只能当参考，不能当交付。** 相邻两期同起点的累计值相减确实能得单月量（实测与直接拓展单月完全一致、差值 0），但它有两个硬伤：①**计划数相减无意义**（计划 id 按期去重，跨月计划会重复/漏算）；②无法自证是否被 BI 中途重算过。要单月就**直接拓展单月区间**（日期筛选填该月 1 日到末日，国家筛选仍用「使用全部」），并做一项强自检：**Σ月度单月值 必须等于 累计至最大值 的对应值，误差 0**。
 
