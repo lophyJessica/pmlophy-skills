@@ -575,6 +575,14 @@ return listItems + tableRows;
 - **AGENTS.md 受保护**：重写需用户明确批准；批准前先给草稿。
 - **每条给 agent 的指令（含框架/文档合并）末尾都带自检报告上传通道**，否则会被用户补指。
 
+## 运行时 runtime.js 的五个坑（改标注运行时前必看）
+
+- **清单条数必须等于角标数**：面板列表取自 `currentPageAnnotations()`，它做三层过滤——页面匹配、`screenState`（宿主 vs 弹窗，互斥）、按形态过滤（如触达计划的触发型/定时型用 `planMode: trigger|timer`，缺省通用）＋ 锚点存在性校验。少任何一层，用户就会看到「清单 11 条、页面只出 5 个」并当成漏挂来报。
+- **锚点不要挂在 `groupIndex === 0` 这类可见序号上**：默认组占住 0，后面新增的同类组从 1 起，锚点永远挂不上。要挂「第一个同类组」就计算出首个索引再以布尔 prop 传入。
+- **视口外的块不要直接 `continue` 跳过**：角标是 `position: fixed`，跳过会让块滚进视口后也不补挂（滚动只做 rAF 重定位、不重扫）。正确做法是全量挂载 + 视口外贴右边缘按 30px 排队 + 点击时先 `scrollIntoView` 再开说明。
+- **性能四件套**：预览态（未开标注）必须零 DOM 操作；测量用 120–180ms 尾部防抖；滚动走 rAF 重定位且只写 `transform`（角标 CSS 要 `left/top:0` + `will-change`）；MutationObserver 只监听 `childList`，别开 `attributes`（React 每次改 class 都回调）。
+- **改了 `runtime.js` 必升 `index.html` 里的 `?v=xxxx`**，否则浏览器吃缓存，改完看着像没生效——「改了没用」的误判头号原因。
+
 ## 参考资料
 - `references/qs-jxc-framework.md`：QS-JXC 分层框架结构 + 逐文件夹职责/设计意图 + 五条设计本质(单一事实源/约束集中编号/变更传播/模板同构/待确认纪律) + 04模板执行索引(Step①-⑥关卡) + 07 UI spec-manifest 驱动 + 权威源分层/变更传播/TSV 体系 + 迁移坑 + 深度解读纪律
 - 维他命课程 09：迭代资料管理（本次需求文件夹/模块当前基准资料/历史归档）+ ASCII 线框图先确认 + 标注 + 研发交接说明
