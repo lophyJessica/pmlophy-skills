@@ -189,7 +189,14 @@ python3 <skill>/scripts/consistency_check.py <源稿.md> --proto <项目>/99-产
 - **值全部取自字段权威源**（字段清单详细稿，**TSV 或 md 均可**——命令行字段清单常是 md，不要只认 .tsv，曾因 skill 写死 .tsv 而误判商机无权威源）——评审PRD只搬运/转译，不脑补不造数。措辞可轻度转译(如TSV"文本,上限100"→"文本，限100字符")，语义必须一致，不加新字段/新规则。md 字段清单的列(字段名称|字段来源|取值说明|必填性|新增页|编辑页|字段说明)可直接映射六列。
 - **只列业务可见字段，剔除英文技术字段**——评审PRD是给人看的，`crmCustomerId/erpCustomerId/customerSnapshotVersion/customerSnapshotSyncTime/erpProductId/unitPriceSnapshot` 这类跨系统技术标识符**不单独成行**（用户红框指出"怎么还有英文字段名称"看不懂）。技术细节收进所属业务字段的"字段说明"里隐含交代（如"关联客户"说明写"保存客户标识与快照版本(含CRM和ERP双标识)，不以名称作关联键"）。字段表全程不出现英文小写字段名。
 
-## 交付形态：**不再出 base64 发布版**（2026-11-09 用户定，覆盖以前所有做法）
+## 交付形态：**默认不再出 base64 发布版**（2026-11-09 用户定）；但项目若已在维护 `-发布版.md`，改完仍要同步生成
+
+**生成脚本修好两处通用坑（2026-11-22 实测）**：
+- 别写死 `images/` 目录。v2.0.1 的图在 `wiki截图/<分组>/`，旧脚本只认 `images/`，跑出来「内嵌 0 张」还把发布版写成了纯相对路径的空壳（差点把 1.7MB 的正确版本覆盖掉，靠备份救回）。现脚本自动从 md 抠任意相对路径。
+- 单张 >100KB 的图在内存里量化压 256 色再内嵌，不覆盖仓库源图。实测 1600×2743 整页长截图 242KB→96KB、文字仍逐字可读，发布版 3.3MB→2.68MB。
+- 交付前核对三数：内嵌张数 == 引用处数（同一图重复引用各内嵌一次，正常）、残留相对路径 0、体积 <3MB。
+
+### 旧口径细节（保留参考）
 
 用户原话：「后面不要出 base64 的图片了，太麻烦了，后面这样，新建一个文件夹，对应评审 prd 中所需要的原型截图，然后按序号等规则命名，这样我自己手动合并到 wiki 上」。
 
@@ -248,12 +255,94 @@ python3 <skill>/scripts/consistency_check.py <源稿.md> --proto <项目>/99-产
 - **`scripts/deliver.py`**：一键交付。扫旧口径（关键词表 `references/legacy-terms.txt`，项目可在 PRD 同目录放 `.prd-legacy-terms.txt` 覆盖）→ 核图引用与 images 目录一一对应 → 调 embed_images 重生成发布版 → 跑三项自检（base64 图数=引用数、相对路径残留=0、字节数不骤降）。修改记录章节内的命中只算历史、不阻断。
 - **`scripts/embed_images.py`**：base64 内嵌生成发布版。
 
+## 用 CDP 精确控制截图尺寸与取数（2026-11-24 实操补充）
+
+### 先记住这条：`setDeviceMetricsOverride` 会惄悄失效
+
+`Emulation.setDeviceMetricsOverride` 设的视口**不是永久的**：导航、标签页切换、部分 CDP 操作之后会**静默回落到真实窗口尺寸**（实测回落成 `780×437`），而且没有任何报错。
+
+后果很阴：你以为在截 1600×1000，用 clip 拉了 1600×1000 的画布，实际页面只渲染了 780×437——**截图里大半是空白，内容挤在左上角**，看起来像“元素没渲染/渲染失败”，会让人往 React 渲染、懒加载上排查（实测就因此绕了很久，“行为组那块是空白的”其实是视口碎了）。
+
+**硬性规则：每次截图前先断言视口**
+```python
+v = js('({w: innerWidth, h: innerHeight})')
+assert (v['w'], v['h']) == (1600, 1000), v   # 不对就重设 override，并重取坐标
+```
+重设 override 后**布局会重排，之前量的坐标全部作废**，必须重新 `getBoundingClientRect`。
+
+**优先用整视口截图**：视口已经是 1600×1000 时，直接 `cdp('Page.captureScreenshot', format='png')` 不带 clip，出的图就是 1600×1000，坐标就是视口坐标——**没有坐标系转换，就没有 scrollY 弄错的可能**。clip 只在“页面比视口长、确实需要指定区间”时才用。
+
+浏览器工具自带的 `capture_screenshot()` 截的是**真实窗口尺寸**（实测 780×437），不管你前面设没设 viewport override；PRD 要的是固定 1600×1000。正确做法：
+
+1. `cdp('Emulation.setDeviceMetricsOverride', width=1600, height=1000, deviceScaleFactor=1, mobile=False, screenWidth=1600, screenHeight=1000)` 钉视口，**然后验证** `innerWidth/innerHeight` 真的变成 1600×1000；不生效就带全 `screenWidth/screenHeight` 参数重设，必要时重新导航一次。
+2. 截图用 `cdp('Page.captureScreenshot', format='png', clip={'x':0,'y':scrollY,'width':1600,'height':1000,'scale':1})`，返回的 `data` 是 base64，写文件即得精确尺寸的图。
+3. **坐标系坑（必踩）**：`getBoundingClientRect()` 得到的是**视口坐标**，而 `Page.captureScreenshot` 的 clip 默认是**文档坐标**。两者差一个 `window.scrollY`。要么 clip 从 0 开始、框坐标加 scrollY；要么 clip 从 scrollY 开始、框坐标直接用视口值。两套混用就会出现「红框画在页面上方的空白处」。
+
+### 操作原型的三个高频坑
+
+- **React 受控组件设值不生效**：`select.value = x` 或 `input.value = x` 后 dispatch 事件，UI 仍显示旧值（下拉还停在「请选择」）。必须用原生 setter 绕过 React 的 value 拦截：
+  ```js
+  const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set;
+  setter.call(el, v); el.dispatchEvent(new Event('change', {bubbles:true}));
+  // input 用 HTMLInputElement.prototype，并同时发 input 与 change
+  ```
+- **URL 参数传错会让候选全空**：原型 `?countryCode=` 期望的是**国家名**（如 `泰国`，需 URL 编码），传区号式的 `86` 匹配不到任何行为，页面显示「暂无可用」+ 空态提示。截出来的图是「空验证」——看着正常，但表达不出「已选中某触发事件」。截图前先 `innerText` 核一下候选是不是空的。
+- **详情/编辑页不能直接输 URL**：`/engage/edit/:id`、`/engage/look/:id` 直接打开时拿不到计划对象，表单是空模板（触发事件显示「请选择」）。必须**从列表页点进去**：先按计划名搜索，再点计划名（查看）或「编辑」按钮，数据才会带上。
+- **截图前把中间态提示隐掉**：如选完触发事件后跳出的「已更换触发事件，请重新配置属性条件」，它属于操作过程态，原图没有、评审稿也不需要。截前用 `style.display='none'` 临时隐藏（只影响图片，不改代码），并在交付说明里交代一句。
+
+## 改口径后哪些图真的要重拍：看图，不要看标题（2026-11-24 教训）
+
+“整页图”不等于“含该功能的图”。实测把 3-12、3-13 两张整页截图列进必换清单，逐个开图才发现：3-13 拍的是定时型计划，红框圈的是结果表与漏斗；3-12 虽然是触发型，但拍于字段新增之前、本来就没那一块——两张都白列。
+
+固定动作：逐张开图问一句「这张图里能不能看到被改的那个字段/句式」，看得到才换。列出清单时就要附上“为何受影响”，写不出理由的先默认不换。
+
 ## 生成整页红框图的可行做法（Playwright+Pillow）
+
+
+## 首选：一条命令出图（`scripts/shot_redbox.py`）
+
+**从 2026-11-24 起，PRD 红框图一律用这个脚本出，不要再现场拼 CDP 调用。** 前面那些坑（视口静默失效、坐标系混用、虚线太稀、框被裁、列表页同名按钮）已经全部固化进脚本，它自己会断言、校验，不达标非 0 退出。
+
+```bash
+# 最简单：框住一个锚点
+python3 shot_redbox.py --url "https://pmlophy.com/project/cms/engage/create?..." \
+    --anno trigger-timing --out 3-6-触发事件与触发时机.png
+
+# 多个锚点取并集
+python3 shot_redbox.py --url URL --anno trigger-type --anno trigger-timing --out 3-10.png
+
+# 先把页面点到目标状态再拍（动作按顺序执行）
+python3 shot_redbox.py --url URL --anno engage-tag-filter --out 3-16.png \
+    --action "click=+ 筛选行为组" \
+    --action "select=预售订单行为" \
+    --action "wait=1500" \
+    --action "click=+ 属性" \
+    --action "fill=取值=双11预售" \
+    --action "click=触发型" --action "click=定时型"
+
+# 从列表点进详情/编辑页（列表行都有同名「编辑」按钮，必须用 clickin 限定卡片）
+python3 shot_redbox.py --url "https://pmlophy.com/project/cms/engage/list" --anno trigger-timing \
+    --action "fill=请输入计划名称=双11" \
+    --action "clickin=双11 预热=编辑" --out 3-10.png
+```
+
+动作语法：`click=<文字>` / `clickcss=<css>` / `clickin=<容器文字>=<按钮>` / `select=<选项文字>` / `selectcss=<css>=<选项>` / `fill=<placeholder>=<值>` / `wait=<毫秒>`。
+
+要点：
+- 原型部署在 `pmlophy.com/project/cms/`，**静态无登录态**，直接用 Playwright 就能拍，不需要挂 Chrome 用户目录。
+- 列表页默认不全量加载（目标计划不在首屏就得先 `fill` 搜索框）；每行都有同名「编辑」按钮，`click=编辑` 会点到第一行，必须用 `clickin` 锁到目标卡片。
+- `select=` 内部已用原生 setter 绕过 React 的 value 拦截，不需要额外处理。
+- 有些字段是二级展开（要先点「+ 属性」才有取值输入框），动作序列里要补 `click` + `wait`。
+- `--hide` 可隐藏干扰元素（如中间态提示「已更换触发事件，请重新配置属性条件」、「原型标注」悬浮按钮）。
+- 两个脚本职责不同：**`shot_redbox.py` = 1600×1000 视口截图 + 单个区域红框**（PRD 主用）；`capture_orm.py` = 整页长图 + 多个角标各一个框（一页多框场景）。
+
 优先用 `scripts/capture_orm.py` 脚本跑；以下为原理与坑，脚本卡壳时排查用：
-- **红框坐标必须截图前现量，不能照上一张图的坐标推算**（实测踩坑）：改过视口宽度、抽屉/弹窗是否展开、侧栏折叠，布局就变了，照旧坐标画出来的框会圈到旁边的表格列上，框和内容对不上而画面里看不出来。固定四步：① 先钉死视口（`Emulation.setDeviceMetricsOverride`，宽高固定，如 1600×1000）② 截图前一刻 `document.querySelector('<锚点>').getBoundingClientRect()` 现取 x/y/w/h ③ 用该值画框，且 `x2 = min(W-6, x+w+6)`——超出画布的部分会被裁掉，出现半框 ④ **截完把 PNG 交给视觉模型问一句「红框是否完整圈住 XX」**，它能把「框圈错位置」直接指出来；只靠坐标数字自查发现不了这类错。
+- **红框坐标必须截图前现量，不能照上一张图的坐标推算**（实测踩坑）：改过视口宽度、抽屉/弹窗是否展开、侧栏折叠，布局就变了，照旧坐标画出来的框会圈到旁边的表格列上，框和内容对不上而画面里看不出来。固定四步：① 先钉死视口（`Emulation.setDeviceMetricsOverride`，宽高固定，如 1600×1000）② 截图前一刻 `document.querySelector('<锚点>').getBoundingClientRect()` 现取 x/y/w/h ③ 用该值画框，且 `x2 = min(W-8, x+w+8)`（pad=8）——超出画布的部分会被裁掉，出现半框 ④ **截完把 PNG 交给视觉模型问一句「红框圈住的是不是 XX 区域」**——它擅长判断「圈错位置」，但**判断不了「四边画没画完整」**（那个用 `check_box.py` 数像素，见上文红框参数条）。
 - **要展示的状态得先造出来**：失败态、已删除态这类非常规状态，先往 localStorage / mock 里种一条对应该状态的数据再截图，否则截出来永远是最常见的那个状态（要求「失败重试」的图，图里两条任务全是「生成中」）。
 - Playwright 打开页面，对每个角标 `document.querySelector("[data-anno='xxx']")` 拿 bounding box（含 scrollY 偏移）。
-- 用 Pillow 在整页图上画红虚线矩形圈住该角标区域（dash=8,gap=4,width=3,padding=6）。每角标一张=底图同(同页)、框位不同。
+- 用 Pillow 在整页图上画红虚线矩形圈住该角标区域（**width=4, dash=12, gap=4, padding=8**）。每角标一张=底图同(同页)、框位不同。
+- **红框参数不是随便定的（2026-11-24 实测回调）**：早期写的是 `width=3, dash=8, gap=4`（占空比 67%），在 1600 宽图上缩放后看着像「碎虚线 / 半框」，用户直接在评审稿里指出「线框不完整、缺失，很多都是这样」。固定改为 **width=4 / dash=12 / gap=4（占空比 75%）**，并且**四角补实心点**保证闭合。另外旧实现的 `n = L // (dash + gap)` 整除会丢掉末尾不足一格的那段，边会短一截，必须改成 `while s < L` 扫到终点。
+- **红框图必须程序化验四边，不能靠视觉模型判**：实测视觉模型会把虚线间隙读成「边缺失」，也会被页面自身的红色元素（必填星号）、右侧蓝色标注按钮干扰，误报与漏报都有。用 `scripts/check_box.py <png> <x0> <y0> <x1> <y1>`，判据是**四边占比接近且都不低于 45%**（dash=12/gap=4 理论 75%，算抗锯齿取 45% 为下限）。某边接近 0 = 那条边根本没画，多半是框超出画布被裁。
 - 表格高超出视口时整页图=首屏900px(列表是滚动容器，full_page不扩展)；框截到视口底即可。
 - 弹窗类角标需触发弹窗后截（如点"转为正式客户"出弹窗——按钮文字可能是"转为正式客户"不是"转客户"）。
 - **弹窗触发受业务状态锁定**（商家实测踩坑）：商机合同签订态/赢单/输单终态会锁死推进等动作，弹窗不出现（如"关联合同签署中,商机不可操作"）。此时先识别是"该商机本来就不能触发"（业务正确，换能触发的商机）还是"需要绕过"（用无关联记录、非终态的商机/路由触发）。终态或已关联业务记录不能硬触发——不要靠反复点无用功，改用状态满足条件的对象/页面。

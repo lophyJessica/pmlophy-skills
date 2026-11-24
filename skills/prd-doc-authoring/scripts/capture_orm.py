@@ -35,25 +35,37 @@ def _find_chrome():
 RED = (220, 38, 38)  # 红虚线框颜色
 
 
-def dashed_rect(d, box, color=RED, width=3, dash=8, gap=4):
-    """在 ImageDraw 上画虚线矩形（不依赖外框，自己分段画）。box=(x0,y0,x1,y1)"""
+def dashed_rect(d, box, color=RED, width=4, dash=12, gap=4):
+    """在 ImageDraw 上画虚线矩形（不依赖外框，自己分段画）。box=(x0,y0,x1,y1)
+
+    参数经 2026-11-24 实测校正：
+    - width 3→4：3px 在 1600 宽图上太细，缩放后看着像断线
+    - dash/gap 8/4→12/4：占空比 67%→75%，低于 70% 视觉上就成“碎段”
+    - 原来用 n = L // (dash+gap) 整除，末尾不足一格的那段直接不画，边会短一截；改 while 扫到 L
+    - 四角补实心点，保证闭合（用户在评审稿里一眼看出来“左下角没闭合”）
+    """
     x0, y0, x1, y1 = box
 
     def seg(a0, b0):
         dx, dy = b0[0] - a0[0], b0[1] - a0[1]
         L = max(abs(dx), abs(dy))
-        if L == 0:
+        if L <= 0:
             return
-        n = L // (dash + gap)
-        for i in range(n + 1):
-            s = i * (dash + gap)
+        step = dash + gap
+        s = 0.0
+        while s < L:
+            e = min(s + dash, L)
             d.line([(a0[0] + dx * s / L, a0[1] + dy * s / L),
-                    (a0[0] + dx * min(s + dash, L) / L, a0[1] + dy * min(s + dash, L) / L)],
+                    (a0[0] + dx * e / L, a0[1] + dy * e / L)],
                    fill=color, width=width)
+            s += step
+
     seg((x0, y0), (x1, y0))
     seg((x1, y0), (x1, y1))
     seg((x1, y1), (x0, y1))
     seg((x0, y1), (x0, y0))
+    for (cx, cy) in ((x0, y0), (x1, y0), (x1, y1), (x0, y1)):
+        d.rectangle([cx - 2, cy - 2, cx + 2, cy + 2], fill=color)
 
 
 def load_anno_config(config_path):
@@ -152,7 +164,7 @@ def run(args):
                     shutil.copy(shot_path, final_path)
                     print(f"  ✓ {task.anno_id} 整页")
                 else:
-                    pad = 6
+                    pad = 8
                     box2 = (box["x"] - pad, box["y"] - pad, box["x"] + box["w"] + pad, box["y"] + box["h"] + pad)
                     img = Image.open(shot_path)
                     d = ImageDraw.Draw(img)
