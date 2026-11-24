@@ -116,6 +116,22 @@
 
 外销私域月度盘点取数（留存用户 / 导入用户 / 私域导购数三项口径）。含四战区层级（东南亚 / 海外直营 / 南亚 / 非洲，合计 13 国、不切战区取不到数）、好友列表与 Whats账号列表的页面限制（无添加时间筛选、好友列表本身即未删除数据、导购数需两个页签相加），以及 2026 年 9 月起的历史基线。
 
+## 图表与演示（上游采纳 · [JimLiu/baoyu-skills](https://github.com/JimLiu/baoyu-skills)）
+
+两个都是上游原版完整拷贝（含 `references/` `scripts/` `themes/`），只把 `description` 改成了中文，正文一字未动，日后可直接与上游 diff。脚本用 bun 跑，没装 bun 时用 `npx -y bun <script>` 兜底。
+
+### `baoyu-diagram`
+
+画架构图 / 流程图 / 时序图 / 组织结构图 / 状态机。输出 `<name>.svg`（深色）、`<name>.light.svg`（浅色）、以及各自的 `@2x.png`；配色走 CSS 自定义属性，`themes/*.json` 换主题不用改脚本（内置 dark / light，可自己加品牌色 json）。四个 references 分别是 sequence / flowchart / architecture / structural 的画法。**这个能直接用在我们的产品架构图和预售链路上**——SVG 可改、可转 PNG 贴进 pptx，比手画方框或整页截图干净。
+
+### `baoyu-slide-deck`
+
+整套幻灯片生成：内容 → `outline.md`（每条写标题/类型/版式）→ 每页一份图像生成提示词 → 逐页出 PNG → `merge-to-pptx.ts` 拼成 pptx。17 套风格预设 + 四维风格系统（纹理/色调/字体/密度）。
+
+**用之前必须知道它的边界**：产物全是位图，它自己在 SKILL 里写死了「只能用光栅图、不许拿 SVG/HTML/Canvas 代替」和「成图上不许补字改字，改字只能重新生成整页」。所以它适合**一次性出稿、阅读型 deck**（汇报分享、社媒长图），**不适合要反复改数据的页**——一个数错了就要整页重生，中文和数字由图像模型渲染，错字糊字是常态。改已有 pptx 的数据页请走 `pptx-slide-surgery` 那条路。
+
+即使不出图，它的 `references/` 也值得单独用：`layouts.md`（版式库）、`dimensions/density.md`（一页放多少信息）、`design-guidelines.md`（受众/字体/配色）、`references/styles/*.md`（corporate / minimal / notion / editorial-infographic 四套适合商务汇报的风格规范），是「一页一事、层级怎么分、留白怎么留」的现成规则。
+
 ## AI Coding Skills（`skills/ai-coding/`）
 
 5 个 AI Coding Skill，用于给 Codex / 反重力 / Cursor 等编码 agent 更稳的工作流。来自上游开源仓库（grill-me / react-best-practices / taste-review / simplify / test-desktop-app），test-desktop-app 按用户笔记自建为通用版。
